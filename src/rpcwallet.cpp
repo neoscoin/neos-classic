@@ -558,6 +558,16 @@ Value getbalance(const Array& params, bool fHelp)
 }
 
 
+Value getunconfirmedbalance(const Array &params, bool fHelp)
+{
+    if (fHelp || params.size() > 0)
+        throw runtime_error(
+            "getunconfirmedbalance\n"
+            "Returns the server's total unconfirmed balance\n");
+    return ValueFromAmount(pwalletMain->GetUnconfirmedBalance());
+}
+
+
 Value movecmd(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 3 || params.size() > 5)
