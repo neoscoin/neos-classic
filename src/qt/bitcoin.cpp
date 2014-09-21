@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
     initTranslations(qtTranslatorBase, qtTranslator, translatorBase, translator);
 
     // User language is set up: pick a data directory
-    Intro::pickDataDirectory();
+    //Intro::pickDataDirectory();
 
     // Do this early as we don't want to bother initializing if we are just calling IPC
     // ... but do it after creating app, so QCoreApplication::arguments is initialized:
