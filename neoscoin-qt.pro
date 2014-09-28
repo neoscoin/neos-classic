@@ -217,7 +217,6 @@ HEADERS += src/qt/bitcoingui.h \
     src/limitedmap.h \
     src/qt/splashscreen.h \
     src/qt/intro.h \
-    src/scrypt.h \
     src/sph_blake.h \
     src/sph_skein.h \
     src/sph_groestl.h \
@@ -304,7 +303,6 @@ SOURCES += src/qt/bitcoin.cpp \
     src/txdb.cpp \
     src/qt/splashscreen.cpp \
     src/qt/intro.cpp \
-    src/scrypt.cpp \
     src/blake.c \
     src/bmw.c \
     src/groestl.c \
