@@ -8,7 +8,6 @@
 #include "uint256.h"
 #include "serialize.h"
 #include "script.h"
-#include "scrypt.h"
 #include "hashgroestl.h"
 #include "hashx11.h"
 #include "hashblake.h"
