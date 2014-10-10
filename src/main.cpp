@@ -1289,7 +1289,6 @@ int64 static GetBlockValue(int nHeight, int64 nFees)
 static const int64 nTargetTimespan = 300; 
 static const int64 nTargetSpacing = 300; 
 
-static const int64 nTargetTimespanNEW = 300;
 static const int64 nTargetSpacingNEW = 300; 
 
 static const int64 nInterval = 1; // retargets every blocks
