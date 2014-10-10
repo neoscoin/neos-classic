@@ -1301,7 +1301,6 @@ static const int64 nMaxAdjustDown = 25;
 static const int64 nMaxAdjustUp = 25; 
 
 static const int64 nTargetTimespanAdjDown = nTargetTimespan * (100 + nMaxAdjustDown) / 100;
-static const int64 nTargetTimespanAdjDownNEW = nTargetTimespanNEW * (100 + nMaxAdjustDown) / 100;
 
 //
 // minimum amount of work that could possibly be required nTime after
