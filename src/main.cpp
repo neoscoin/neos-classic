@@ -1300,8 +1300,6 @@ static const int64 nAveragingTargetTimespanNEW = nAveragingInterval * nTargetSpa
 static const int64 nMaxAdjustDown = 25; 
 static const int64 nMaxAdjustUp = 25; 
 
-static const int64 nTargetTimespanAdjDown = nTargetTimespan * (100 + nMaxAdjustDown) / 100;
-
 //
 // minimum amount of work that could possibly be required nTime after
 // minimum work required was nBase
