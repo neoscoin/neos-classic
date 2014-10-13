@@ -33,5 +33,7 @@
         </array>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+        <key>LSAppNapIsDisabled</key>
+          <string>True</string>
 </dict>
 </plist>
