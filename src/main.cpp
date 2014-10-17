@@ -1285,11 +1285,8 @@ int64 static GetBlockValue(int nHeight, int64 nFees)
     return nSubsidy + nFees;
     
 }
-
-static const int64 nTargetTimespan = 300; 
+ 
 static const int64 nTargetSpacing = 300; 
-
-static const int64 nTargetTimespanNEW = 300;
 static const int64 nTargetSpacingNEW = 300; 
 
 static const int64 nInterval = 1; // retargets every blocks
@@ -1299,9 +1296,6 @@ static const int64 nAveragingTargetTimespanNEW = nAveragingInterval * nTargetSpa
 
 static const int64 nMaxAdjustDown = 25; 
 static const int64 nMaxAdjustUp = 25; 
-
-static const int64 nTargetTimespanAdjDown = nTargetTimespan * (100 + nMaxAdjustDown) / 100;
-static const int64 nTargetTimespanAdjDownNEW = nTargetTimespanNEW * (100 + nMaxAdjustDown) / 100;
 
 //
 // minimum amount of work that could possibly be required nTime after
