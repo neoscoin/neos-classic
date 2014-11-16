@@ -33,8 +33,7 @@ public:
         bnProofOfWorkLimit[ALGO_SHA256D] = CBigNum(~uint256(0) >> 20);
         bnProofOfWorkLimit[ALGO_X11]     = CBigNum(~uint256(0) >> 20);
         bnProofOfWorkLimit[ALGO_BLAKE]   = CBigNum(~uint256(0) >> 20);
-        nSubsidyHalvingInterval = 210000; 
-        nSubsidyHalvingIntervalNEW = 210000; 
+        nSubsidyHalvingInterval = 210000;
 
         // Build the genesis block. Note that the output of the genesis coinbase cannot
         // be spent as it did not originally exist in the database.
