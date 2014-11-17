@@ -1276,26 +1276,23 @@ static const int64 nMinSubsidy = .0625 * COIN;
 int64 static GetBlockValue(int nHeight, int64 nFees)
 {
     int64 nSubsidy = nStartSubsidy;
-    
+
     if(nHeight == 1) { nSubsidy = 1050000 * COIN; }                      //PREMINE
     else if(nHeight <= 1001 && nHeight > 1) { nSubsidy = 0.1 * COIN; }   //FAIR RELEASE RANGE
 
     nSubsidy >>= (nHeight / Params().SubsidyHalvingInterval());
-    if (nSubsidy < nMinSubsidy){nSubsidy = nMinSubsidy;}    
+    if (nSubsidy < nMinSubsidy){nSubsidy = nMinSubsidy;}
     return nSubsidy + nFees;
-    
 }
- 
-static const int64 nTargetSpacing = 300; 
-static const int64 nTargetSpacingNEW = 300; 
+
+static const int64 nTargetSpacing = 300;
 
 static const int64 nInterval = 1; // retargets every blocks
 static const int64 nAveragingInterval = 10; // 10 blocks
-static const int64 nAveragingTargetTimespan = nAveragingInterval * nTargetSpacing; 
-static const int64 nAveragingTargetTimespanNEW = nAveragingInterval * nTargetSpacingNEW; 
+static const int64 nAveragingTargetTimespan = nAveragingInterval * nTargetSpacing;
 
-static const int64 nMaxAdjustDown = 25; 
-static const int64 nMaxAdjustUp = 25; 
+static const int64 nMaxAdjustDown = 25;
+static const int64 nMaxAdjustUp = 25;
 
 //
 // minimum amount of work that could possibly be required nTime after
@@ -1330,10 +1327,6 @@ unsigned int ComputeMinWork(unsigned int nBase, int64 nTime)
 static const int64 nMinActualTimespan = nAveragingTargetTimespan * (100 - nMaxAdjustUp) / 100;
 static const int64 nMaxActualTimespan = nAveragingTargetTimespan * (100 + nMaxAdjustDown) / 100;
 
-static const int64 nMinActualTimespanNEW = nAveragingTargetTimespanNEW * (100 - nMaxAdjustUp) / 100;
-static const int64 nMaxActualTimespanNEW = nAveragingTargetTimespanNEW * (100 + nMaxAdjustDown) / 100;
-    
-
 unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, int algo)
 {
     unsigned int nProofOfWorkLimit = Params().ProofOfWorkLimit(algo).GetCompact();
@@ -1351,20 +1344,11 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
         // Special difficulty rule for testnet:
         // If the new block's timestamp is more than 2* 10 minutes
         // then allow mining of a min-difficulty block.
-        if(pindex->nHeight < DIFF_SWITCH_BLOCK_2)
-        {
-            nTargetSpacingSwitch = nTargetSpacing;
-        }
-        else
-        {
-            nTargetSpacingSwitch = nTargetSpacingNEW;
-        }
         if (pblock->nTime > pindexLast->nTime + nTargetSpacingSwitch*2)
             return nProofOfWorkLimit;
         else
         {
             // Return the last non-special-min-difficulty-rules-block
-            
             while (pindex->pprev && pindex->nHeight % nInterval != 0 && pindex->nBits == nProofOfWorkLimit)
                 pindex = pindex->pprev;
             return pindex->nBits;
@@ -1388,42 +1372,23 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
     // Limit adjustment step
     int64 nActualTimespan = pindexPrev->GetBlockTime() - pindexFirst->GetBlockTime();
     printf("  nActualTimespan = %"PRI64d"  before bounds\n", nActualTimespan);
-    if(pindex->nHeight < DIFF_SWITCH_BLOCK_2)
-        {
-            if (nActualTimespan < nMinActualTimespan)
-            nActualTimespan = nMinActualTimespan;
-            if (nActualTimespan > nMaxActualTimespan)
-            nActualTimespan = nMaxActualTimespan;
-        }
-        else
-        {
-            if (nActualTimespan < nMinActualTimespanNEW)
-            nActualTimespan = nMinActualTimespanNEW;
-            if (nActualTimespan > nMaxActualTimespanNEW)
-            nActualTimespan = nMaxActualTimespanNEW;
-        }
-    
+    if (nActualTimespan < nMinActualTimespan)
+        nActualTimespan = nMinActualTimespan;
+    if (nActualTimespan > nMaxActualTimespan)
+        nActualTimespan = nMaxActualTimespan;
 
     // Retarget
     CBigNum bnNew;
     bnNew.SetCompact(pindexPrev->nBits);
     bnNew *= nActualTimespan;
-    if(pindex->nHeight < DIFF_SWITCH_BLOCK_2)
     bnNew /= nAveragingTargetTimespan;
-    else
-    bnNew /= nAveragingTargetTimespanNEW;
 
     if (bnNew > Params().ProofOfWorkLimit(algo))
         bnNew = Params().ProofOfWorkLimit(algo);
 
     /// debug print
     printf("GetNextWorkRequired RETARGET\n");
-
-    if(pindex->nHeight < DIFF_SWITCH_BLOCK_2)
     printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d"\n", nAveragingTargetTimespan, nActualTimespan);
-    else
-    printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d"\n", nAveragingTargetTimespanNEW, nActualTimespan);
-
     printf("Before: %08x  %s\n", pindexPrev->nBits, CBigNum().SetCompact(pindexPrev->nBits).getuint256().ToString().c_str());
     printf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
 
@@ -4370,40 +4335,21 @@ CBlockTemplate* CreateNewBlock(CReserveKey& reservekey, int algo)
 
     // Set block version
     pblock->nVersion = BLOCK_VERSION_DEFAULT;
-    if (pindexBest->nHeight < DIFF_SWITCH_BLOCK)
-        {
-             switch (algo)
-            {
-                case ALGO_SHA256D:
-                    break;
-                default:
-                    error("CreateNewBlock: bad algo");
-                    return NULL;
-            }
-            
-        }
-        else
-        {
-            switch (algo)
-            {
-                case ALGO_SHA256D:
-                    break;
-                case ALGO_X11:
-                    pblock->nVersion |= BLOCK_VERSION_X11;
-                    break;
-                case ALGO_BLAKE:
-                    pblock->nVersion |= BLOCK_VERSION_BLAKE;
-                    break;
-                default:
-                    error("CreateNewBlock: bad algo");
-                    return NULL;
-            }
-            
-        }
-            
-        
-    
-    
+    switch (algo)
+    {
+        case ALGO_SHA256D:
+            break;
+        case ALGO_X11:
+            pblock->nVersion |= BLOCK_VERSION_X11;
+            break;
+        case ALGO_BLAKE:
+            pblock->nVersion |= BLOCK_VERSION_BLAKE;
+            break;
+        default:
+            error("CreateNewBlock: bad algo");
+            return NULL;
+    }
+
     // Create coinbase tx
     CTransaction txNew;
     txNew.vin.resize(1);
@@ -5019,49 +4965,27 @@ void static ThreadBitcoinMiner(CWallet *pwallet)
     printf("NeosCoin miner started\n");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
     RenameThread("bitcoin-miner");
-    
-    if (pindexBest->nHeight < DIFF_SWITCH_BLOCK) 
+
+    try
+    {
+        switch (miningAlgo)
         {
-            try 
-            {
-                switch (miningAlgo)
-                {
-                    case ALGO_SHA256D:
-                        BitcoinMiner(pwallet);
-                        break;
-                }
-            }
-            catch (boost::thread_interrupted)
-            {
-                printf("NeosCoin miner terminated\n");
-                throw;
-            }
-            
+            case ALGO_SHA256D:
+                BitcoinMiner(pwallet);
+                break;
+            case ALGO_X11:
+                GenericMiner(pwallet, ALGO_X11);
+                break;
+            case ALGO_BLAKE:
+                GenericMiner(pwallet, ALGO_BLAKE);
+                break;
         }
-        else
-        {
-            try 
-            {
-                switch (miningAlgo)
-                {
-                    case ALGO_SHA256D:
-                        BitcoinMiner(pwallet);
-                        break;
-                    case ALGO_X11:
-                        GenericMiner(pwallet, ALGO_X11);
-                        break;
-                    case ALGO_BLAKE:
-                        GenericMiner(pwallet, ALGO_BLAKE);
-                        break;
-                }
-            }
-            catch (boost::thread_interrupted)
-            {
-                printf("NeosCoin miner terminated\n");
-                throw;
-            }
-           
-        }
+    }
+    catch (boost::thread_interrupted)
+    {
+        printf("NeosCoin miner terminated\n");
+        throw;
+    }
 }
 
 void GenerateBitcoins(bool fGenerate, CWallet* pwallet)
