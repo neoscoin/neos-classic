@@ -1327,7 +1327,7 @@ unsigned int ComputeMinWork(unsigned int nBase, int64 nTime)
 static const int64 nMinActualTimespan = nAveragingTargetTimespan * (100 - nMaxAdjustUp) / 100;
 static const int64 nMaxActualTimespan = nAveragingTargetTimespan * (100 + nMaxAdjustDown) / 100;
 
-unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, int algo)
+unsigned int static GetNextWorkRequired_V1(const CBlockIndex* pindexLast, const CBlockHeader *pblock, int algo)
 {
     unsigned int nProofOfWorkLimit = Params().ProofOfWorkLimit(algo).GetCompact();
     
@@ -1387,12 +1387,98 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
         bnNew = Params().ProofOfWorkLimit(algo);
 
     /// debug print
-    printf("GetNextWorkRequired RETARGET\n");
+    printf("GetNextWorkRequired RETARGET (LEGACY)\n");
     printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d"\n", nAveragingTargetTimespan, nActualTimespan);
     printf("Before: %08x  %s\n", pindexPrev->nBits, CBigNum().SetCompact(pindexPrev->nBits).getuint256().ToString().c_str());
     printf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
 
     return bnNew.GetCompact();
+}
+
+unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, const CBlockHeader *pblock, int algo) {
+    //unsigned int nProofOfWorkLimit = Params().ProofOfWorkLimit(algo).GetCompact();
+    if (algo == 0) {
+    const CBlockIndex *BlockLastSolved = GetLastBlockIndexForAlgo(pindexLast, algo);
+    const CBlockIndex *BlockReading = GetLastBlockIndexForAlgo(pindexLast, algo);
+    const CBlockHeader *BlockCreating = pblock;
+    BlockCreating = BlockCreating;
+    int64 nActualTimespan = 0;
+    int64 LastBlockTime = 0;
+    int64 PastBlocksMin = 24;
+    int64 PastBlocksMax = 24;
+    int64 CountBlocks = 0;
+    CBigNum PastDifficultyAverage;
+    CBigNum PastDifficultyAveragePrev;
+    
+    for (unsigned int i = 1; BlockReading && BlockReading->nHeight > 0; i++) {
+        if (PastBlocksMax > 0 && i > PastBlocksMax) { break; }
+        CountBlocks++;
+
+        if(CountBlocks <= PastBlocksMin) {
+            if (CountBlocks == 1) { PastDifficultyAverage.SetCompact(BlockReading->nBits); }
+            else { PastDifficultyAverage = ((PastDifficultyAveragePrev * CountBlocks)+(CBigNum().SetCompact(BlockReading->nBits))) / (CountBlocks+1); }
+            PastDifficultyAveragePrev = PastDifficultyAverage;
+        }
+
+        if(LastBlockTime > 0){
+            int64 Diff = (LastBlockTime - BlockReading->GetBlockTime());
+            nActualTimespan += Diff;
+        }
+        LastBlockTime = BlockReading->GetBlockTime();      
+
+        if (BlockReading->pprev == NULL) { assert(BlockReading); break; }
+        BlockReading = BlockReading->pprev;
+    }
+    
+    CBigNum bnNew(PastDifficultyAverage);
+
+    int64 nTargetTimespan = CountBlocks*nTargetSpacing;
+
+    if (nActualTimespan < nTargetTimespan/3)
+        nActualTimespan = nTargetTimespan/3;
+    if (nActualTimespan > nTargetTimespan*3)
+        nActualTimespan = nTargetTimespan*3;
+
+    // Retarget
+    bnNew *= nActualTimespan;
+    bnNew /= nTargetTimespan;
+
+    if (bnNew > Params().ProofOfWorkLimit(algo)) {
+        bnNew = Params().ProofOfWorkLimit(algo);
+    }
+    
+    /// debug print
+    printf("GetNextWorkRequired RETARGET (DGW) ALGO: %d\n", algo);
+    printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d" \n", nTargetTimespan, nActualTimespan);
+    printf("Before: %08x  %s\n", BlockLastSolved->nBits, CBigNum().SetCompact(BlockLastSolved->nBits).getuint256().ToString().c_str());
+    printf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
+     
+    return bnNew.GetCompact();
+    } else {
+        return 1;
+    }
+}
+
+unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, int algo)
+{
+    int DiffMode = 1;
+
+    // Fork block for blake/x11 removal, 30 is just for local tests.
+    if (pindexLast->nHeight+1 >= 999999) {
+        DiffMode = 2;
+    }
+
+    if (DiffMode == 1) {
+        return GetNextWorkRequired_V1(pindexLast, pblock, algo);
+	} else if (DiffMode == 2) {
+        if (algo != 0) {
+            return 1;
+        } else {
+            return DarkGravityWave3(pindexLast, pblock,algo);
+        }
+    }
+
+    return DarkGravityWave3(pindexLast, pblock,algo);
 }
 
 
