@@ -239,7 +239,6 @@ std::string HelpMessage()
     strUsage += "  -maxorphantx=<n>       " + strprintf(_("Keep at most <n> unconnectable transactions in memory (default: %u)"), DEFAULT_MAX_ORPHAN_TRANSACTIONS) + "\n";
     strUsage += "  -reindex               " + _("Rebuild block chain index from current blk000??.dat files") + "\n";
     strUsage += "  -par=<n>               " + _("Set the number of script verification threads (up to 16, 0 = auto, <0 = leave that many cores free, default: 0)") + "\n";
-    strUsage += "  -algo=<algo>           " + _("Mining algorithm: sha256d, x11, blake") + "\n";
     strUsage += "\n" + _("Block creation options:") + "\n";
     strUsage += "  -blockminsize=<n>      "   + _("Set minimum block size in bytes (default: 0)") + "\n";
     strUsage += "  -blockmaxsize=<n>      "   + _("Set maximum block size in bytes (default: 250000)") + "\n";
@@ -411,16 +410,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     }
 
     // Algo
-    std::string strAlgo = GetArg("-algo", "sha256d");
-    transform(strAlgo.begin(),strAlgo.end(),strAlgo.begin(),::tolower);
-    if (strAlgo == "sha" || strAlgo == "sha256" || strAlgo == "sha256d")
-        miningAlgo = ALGO_SHA256D;
-    else if (strAlgo == "x11")
-        miningAlgo = ALGO_X11;
-    else if (strAlgo == "blake" || strAlgo == "blake256")
-        miningAlgo = ALGO_BLAKE;
-    else
-        miningAlgo = ALGO_SHA256D;
+    miningAlgo = ALGO_SHA256D;
     
     // Make sure enough file descriptors are available
     int nBind = std::max((int)mapArgs.count("-bind"), 1);

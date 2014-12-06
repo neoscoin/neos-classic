@@ -5059,12 +5059,6 @@ void static ThreadBitcoinMiner(CWallet *pwallet)
             case ALGO_SHA256D:
                 BitcoinMiner(pwallet);
                 break;
-            case ALGO_X11:
-                GenericMiner(pwallet, ALGO_X11);
-                break;
-            case ALGO_BLAKE:
-                GenericMiner(pwallet, ALGO_BLAKE);
-                break;
         }
     }
     catch (boost::thread_interrupted)
