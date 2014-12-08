@@ -1330,13 +1330,13 @@ static const int64 nMaxActualTimespan = nAveragingTargetTimespan * (100 + nMaxAd
 unsigned int static GetNextWorkRequired_V1(const CBlockIndex* pindexLast, const CBlockHeader *pblock, int algo)
 {
     unsigned int nProofOfWorkLimit = Params().ProofOfWorkLimit(algo).GetCompact();
-    
+
     // Genesis block
     if (pindexLast == NULL)
         return nProofOfWorkLimit;
-    
+
     const CBlockIndex* pindex = pindexLast;
-    
+
     // Testnet
     if (TestNet())
     {
@@ -1357,7 +1357,7 @@ unsigned int static GetNextWorkRequired_V1(const CBlockIndex* pindexLast, const 
 
     // find previous block with same algo
     const CBlockIndex* pindexPrev = GetLastBlockIndexForAlgo(pindexLast, algo);
-    
+
     // find first block in averaging interval
     // Go back by what we want to be nAveragingInterval blocks
     const CBlockIndex* pindexFirst = pindexPrev;
@@ -1409,7 +1409,7 @@ unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, const CBlock
     int64 CountBlocks = 0;
     CBigNum PastDifficultyAverage;
     CBigNum PastDifficultyAveragePrev;
-    
+
     for (unsigned int i = 1; BlockReading && BlockReading->nHeight > 0; i++) {
         if (PastBlocksMax > 0 && i > PastBlocksMax) { break; }
         CountBlocks++;
@@ -1424,12 +1424,12 @@ unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, const CBlock
             int64 Diff = (LastBlockTime - BlockReading->GetBlockTime());
             nActualTimespan += Diff;
         }
-        LastBlockTime = BlockReading->GetBlockTime();      
+        LastBlockTime = BlockReading->GetBlockTime();
 
         if (BlockReading->pprev == NULL) { assert(BlockReading); break; }
         BlockReading = BlockReading->pprev;
     }
-    
+
     CBigNum bnNew(PastDifficultyAverage);
 
     int64 nTargetTimespan = CountBlocks*nTargetSpacing;
@@ -1446,13 +1446,13 @@ unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, const CBlock
     if (bnNew > Params().ProofOfWorkLimit(algo)) {
         bnNew = Params().ProofOfWorkLimit(algo);
     }
-    
+
     /// debug print
     printf("GetNextWorkRequired RETARGET (DGW) ALGO: %d\n", algo);
     printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d" \n", nTargetTimespan, nActualTimespan);
     printf("Before: %08x  %s\n", BlockLastSolved->nBits, CBigNum().SetCompact(BlockLastSolved->nBits).getuint256().ToString().c_str());
     printf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
-     
+
     return bnNew.GetCompact();
     } else {
         return 1;
@@ -1463,17 +1463,23 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
 {
     int DiffMode = 1;
 
-    // Fork block for blake/x11 removal, 30 is just for local tests.
-    if (pindexLast->nHeight+1 >= 999999) {
+    if (pindexLast->nHeight+1 >= NFORKONE)
+    {
         DiffMode = 2;
     }
 
-    if (DiffMode == 1) {
+    if (DiffMode == 1)
+    {
         return GetNextWorkRequired_V1(pindexLast, pblock, algo);
-	} else if (DiffMode == 2) {
-        if (algo != 0) {
+    }
+    else if (DiffMode == 2)
+    {
+        if (algo != 0)
+        {
             return 1;
-        } else {
+        }
+        else
+        {
             return DarkGravityWave3(pindexLast, pblock,algo);
         }
     }
