@@ -4427,19 +4427,33 @@ CBlockTemplate* CreateNewBlock(CReserveKey& reservekey, int algo)
 
     // Set block version
     pblock->nVersion = BLOCK_VERSION_DEFAULT;
-    switch (algo)
+    if(pindexBest->nHeight > NFORKONE)
     {
-        case ALGO_SHA256D:
-            break;
-        case ALGO_X11:
-            pblock->nVersion |= BLOCK_VERSION_X11;
-            break;
-        case ALGO_BLAKE:
-            pblock->nVersion |= BLOCK_VERSION_BLAKE;
-            break;
-        default:
-            error("CreateNewBlock: bad algo");
-            return NULL;
+        switch (algo)
+        {
+            case ALGO_SHA256D:
+                break;
+            default:
+                error("CreateNewBlock: bad algorithm");
+                return NULL;
+        }
+    }
+    else
+    {
+        switch (algo)
+        {
+            case ALGO_SHA256D:
+                break;
+            case ALGO_X11:
+                pblock->nVersion |= BLOCK_VERSION_X11;
+                break;
+            case ALGO_BLAKE:
+                pblock->nVersion |= BLOCK_VERSION_BLAKE;
+                break;
+            default:
+                error("CreateNewBlock: bad algorithm");
+                return NULL;
+        }
     }
 
     // Create coinbase tx
