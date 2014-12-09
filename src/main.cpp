@@ -3447,7 +3447,23 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         if (!vRecv.empty())
             vRecv >> addrFrom >> nNonce;
         if (!vRecv.empty())
+        {
             vRecv >> pfrom->strSubVer;
+            if(
+                (pfrom->strSubVer == "/-NEOS:1.0.0/") ||
+                (pfrom->strSubVer == "/NEOS:1.1.0/") ||
+                (pfrom->strSubVer == "/NEOS:1.1.0.1/") ||
+                (pfrom->strSubVer == "/NEOS:1.1.0.2/") ||
+                (pfrom->strSubVer == "/NEOS:1.1.0.3/") ||
+                (pfrom->strSubVer == "/NEOS:1.1.0.4/")
+              )
+            {
+                //Disconnect from peers older then this version
+                printf("partner using obsolete version disconnecting\n");
+                pfrom->fDisconnect = true;
+                return false;
+            }
+        }            
         if (!vRecv.empty())
             vRecv >> pfrom->nStartingHeight;
         if (!vRecv.empty())
