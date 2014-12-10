@@ -56,7 +56,7 @@ static const int MAX_SCRIPTCHECK_THREADS = 16;
 /** Default amount of block size reserved for high-priority transactions (in bytes) */
 static const int DEFAULT_BLOCK_PRIORITY_SIZE = 27000;
 /** Fork block for removal of X11/BLAKE algorithms */
-static const int NFORKONE = 999999;
+static const int NFORKONE = 42778;
 #ifdef USE_UPNP
 static const int fHaveUPnP = true;
 #else
