@@ -55,6 +55,8 @@ static const unsigned int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20
 static const int MAX_SCRIPTCHECK_THREADS = 16;
 /** Default amount of block size reserved for high-priority transactions (in bytes) */
 static const int DEFAULT_BLOCK_PRIORITY_SIZE = 27000;
+/** Fork block for removal of X11/BLAKE algorithms */
+static const int NFORKONE = 42778;
 #ifdef USE_UPNP
 static const int fHaveUPnP = true;
 #else
@@ -688,8 +690,6 @@ enum BlockStatus {
     BLOCK_FAILED_MASK        =   96
 };
 
-const int64 nBlockAlgoWorkWeightStart = 142000; // block where algo work weighting starts
-
 /** The block chain is a tree shaped structure starting with the
  * genesis block at the root, with each block potentially having multiple
  * candidates to be the next block. A blockindex may have multiple pprev pointing
@@ -827,48 +827,6 @@ public:
         if (bnTarget <= 0)
             return 0;
         return (CBigNum(1)<<256) / (bnTarget+1);
-    }
-
-    int GetAlgoWorkFactor() const 
-    {
-        if (!TestNet() && (nHeight < nBlockAlgoWorkWeightStart))
-        {
-            return 1;
-        }
-        if (TestNet() && (nHeight < 100))
-        {
-            return 1;
-        }
-        switch (GetAlgo())
-        {
-            case ALGO_SHA256D:
-                return 1; 
-            // work factor = absolute work ratio * optimisation factor
-            case ALGO_X11:
-                return 128 * 8;
-            case ALGO_BLAKE:
-                return 4 * 8;
-            default:
-                return 1;
-        }
-    }
-
-    CBigNum GetBlockWorkAdjusted() const
-    {
-        CBigNum bnRes;
-        bnRes = GetBlockWork() * GetAlgoWorkFactor();
-        
-
-        while (bnRes < 100000)
-        {
-            bnRes = bnRes * 2;
-        }
-        while (bnRes > 100000)
-        {
-            bnRes = bnRes / 2;
-        }
-       
-        return bnRes;
     }
     
     bool IsInMainChain() const

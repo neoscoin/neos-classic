@@ -1327,16 +1327,16 @@ unsigned int ComputeMinWork(unsigned int nBase, int64 nTime)
 static const int64 nMinActualTimespan = nAveragingTargetTimespan * (100 - nMaxAdjustUp) / 100;
 static const int64 nMaxActualTimespan = nAveragingTargetTimespan * (100 + nMaxAdjustDown) / 100;
 
-unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, int algo)
+unsigned int static GetNextWorkRequired_V1(const CBlockIndex* pindexLast, const CBlockHeader *pblock, int algo)
 {
     unsigned int nProofOfWorkLimit = Params().ProofOfWorkLimit(algo).GetCompact();
-    
+
     // Genesis block
     if (pindexLast == NULL)
         return nProofOfWorkLimit;
-    
+
     const CBlockIndex* pindex = pindexLast;
-    
+
     // Testnet
     if (TestNet())
     {
@@ -1357,7 +1357,7 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
 
     // find previous block with same algo
     const CBlockIndex* pindexPrev = GetLastBlockIndexForAlgo(pindexLast, algo);
-    
+
     // find first block in averaging interval
     // Go back by what we want to be nAveragingInterval blocks
     const CBlockIndex* pindexFirst = pindexPrev;
@@ -1387,12 +1387,104 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
         bnNew = Params().ProofOfWorkLimit(algo);
 
     /// debug print
-    printf("GetNextWorkRequired RETARGET\n");
+    printf("GetNextWorkRequired RETARGET (LEGACY)\n");
     printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d"\n", nAveragingTargetTimespan, nActualTimespan);
     printf("Before: %08x  %s\n", pindexPrev->nBits, CBigNum().SetCompact(pindexPrev->nBits).getuint256().ToString().c_str());
     printf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
 
     return bnNew.GetCompact();
+}
+
+unsigned int static DarkGravityWave3(const CBlockIndex* pindexLast, const CBlockHeader *pblock, int algo) {
+    //unsigned int nProofOfWorkLimit = Params().ProofOfWorkLimit(algo).GetCompact();
+    if (algo == 0) {
+    const CBlockIndex *BlockLastSolved = GetLastBlockIndexForAlgo(pindexLast, algo);
+    const CBlockIndex *BlockReading = GetLastBlockIndexForAlgo(pindexLast, algo);
+    const CBlockHeader *BlockCreating = pblock;
+    BlockCreating = BlockCreating;
+    int64 nActualTimespan = 0;
+    int64 LastBlockTime = 0;
+    int64 PastBlocksMin = 24;
+    int64 PastBlocksMax = 24;
+    int64 CountBlocks = 0;
+    CBigNum PastDifficultyAverage;
+    CBigNum PastDifficultyAveragePrev;
+
+    for (unsigned int i = 1; BlockReading && BlockReading->nHeight > 0; i++) {
+        if (PastBlocksMax > 0 && i > PastBlocksMax) { break; }
+        CountBlocks++;
+
+        if(CountBlocks <= PastBlocksMin) {
+            if (CountBlocks == 1) { PastDifficultyAverage.SetCompact(BlockReading->nBits); }
+            else { PastDifficultyAverage = ((PastDifficultyAveragePrev * CountBlocks)+(CBigNum().SetCompact(BlockReading->nBits))) / (CountBlocks+1); }
+            PastDifficultyAveragePrev = PastDifficultyAverage;
+        }
+
+        if(LastBlockTime > 0){
+            int64 Diff = (LastBlockTime - BlockReading->GetBlockTime());
+            nActualTimespan += Diff;
+        }
+        LastBlockTime = BlockReading->GetBlockTime();
+
+        if (BlockReading->pprev == NULL) { assert(BlockReading); break; }
+        BlockReading = BlockReading->pprev;
+    }
+
+    CBigNum bnNew(PastDifficultyAverage);
+
+    int64 nTargetTimespan = CountBlocks*nTargetSpacing;
+
+    if (nActualTimespan < nTargetTimespan/3)
+        nActualTimespan = nTargetTimespan/3;
+    if (nActualTimespan > nTargetTimespan*3)
+        nActualTimespan = nTargetTimespan*3;
+
+    // Retarget
+    bnNew *= nActualTimespan;
+    bnNew /= nTargetTimespan;
+
+    if (bnNew > Params().ProofOfWorkLimit(algo)) {
+        bnNew = Params().ProofOfWorkLimit(algo);
+    }
+
+    /// debug print
+    printf("GetNextWorkRequired RETARGET (DGW) ALGO: %d\n", algo);
+    printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d" \n", nTargetTimespan, nActualTimespan);
+    printf("Before: %08x  %s\n", BlockLastSolved->nBits, CBigNum().SetCompact(BlockLastSolved->nBits).getuint256().ToString().c_str());
+    printf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
+
+    return bnNew.GetCompact();
+    } else {
+        return 1;
+    }
+}
+
+unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, int algo)
+{
+    int DiffMode = 1;
+
+    if (pindexLast->nHeight+1 >= NFORKONE)
+    {
+        DiffMode = 2;
+    }
+
+    if (DiffMode == 1)
+    {
+        return GetNextWorkRequired_V1(pindexLast, pblock, algo);
+    }
+    else if (DiffMode == 2)
+    {
+        if (algo != 0)
+        {
+            return 1;
+        }
+        else
+        {
+            return DarkGravityWave3(pindexLast, pblock,algo);
+        }
+    }
+
+    return DarkGravityWave3(pindexLast, pblock,algo);
 }
 
 
@@ -1449,7 +1541,7 @@ void static InvalidChainFound(CBlockIndex* pindexNew)
     printf("InvalidChainFound:  current best=%s  height=%d  log2_work=%.8g  date=%s\n",
       hashBestChain.ToString().c_str(), nBestHeight, log(nBestChainWork.getdouble())/log(2.0),
       DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexBest->GetBlockTime()).c_str());
-    if (pindexBest && nBestInvalidWork > nBestChainWork + (pindexBest->GetBlockWorkAdjusted() * 6).getuint256())
+    if (pindexBest && nBestInvalidWork > nBestChainWork + (pindexBest->GetBlockWork() * 6).getuint256())
         printf("InvalidChainFound: Warning: Displayed transactions may not be correct! You may need to upgrade, or other nodes may need to upgrade.\n");
 }
 
@@ -2096,7 +2188,7 @@ bool SetBestChain(CValidationState &state, CBlockIndex* pindexNew)
       hashBestChain.ToString().c_str(), 
       nBestHeight, 
       pindexNew->GetAlgo(),
-      pindexNew->GetBlockWorkAdjusted().ToString().c_str(),
+      pindexNew->GetBlockWork().ToString().c_str(),
       log(nBestChainWork.getdouble())/log(2.0), 
       (unsigned long)pindexNew->nChainTx,
       DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexBest->GetBlockTime()).c_str(),
@@ -2153,7 +2245,7 @@ bool AddToBlockIndex(CBlock& block, CValidationState& state, const CDiskBlockPos
         pindexNew->nHeight = pindexNew->pprev->nHeight + 1;
     }
     pindexNew->nTx = block.vtx.size();
-    pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + pindexNew->GetBlockWorkAdjusted().getuint256();
+    pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + pindexNew->GetBlockWork().getuint256();
     pindexNew->nChainTx = (pindexNew->pprev ? pindexNew->pprev->nChainTx : 0) + pindexNew->nTx;
     pindexNew->nFile = pos.nFile;
     pindexNew->nDataPos = pos.nPos;
@@ -2783,7 +2875,7 @@ bool static LoadBlockIndexDB()
     BOOST_FOREACH(const PAIRTYPE(int, CBlockIndex*)& item, vSortedByHeight)
     {
         CBlockIndex* pindex = item.second;
-        pindex->nChainWork = (pindex->pprev ? pindex->pprev->nChainWork : 0) + pindex->GetBlockWorkAdjusted().getuint256();
+        pindex->nChainWork = (pindex->pprev ? pindex->pprev->nChainWork : 0) + pindex->GetBlockWork().getuint256();
         pindex->nChainTx = (pindex->pprev ? pindex->pprev->nChainTx : 0) + pindex->nTx;
         if ((pindex->nStatus & BLOCK_VALID_MASK) >= BLOCK_VALID_TRANSACTIONS && !(pindex->nStatus & BLOCK_FAILED_MASK))
             setBlockIndexValid.insert(pindex);
@@ -3138,7 +3230,7 @@ string GetWarnings(string strFor)
     }
 
     // Longer invalid proof-of-work chain
-    if (pindexBest && nBestInvalidWork > nBestChainWork + (pindexBest->GetBlockWorkAdjusted() * 6).getuint256())
+    if (pindexBest && nBestInvalidWork > nBestChainWork + (pindexBest->GetBlockWork() * 6).getuint256())
     {
         nPriority = 2000;
         strStatusBar = strRPC = _("Warning: Displayed transactions may not be correct! You may need to upgrade, or other nodes may need to upgrade.");
@@ -3355,7 +3447,23 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         if (!vRecv.empty())
             vRecv >> addrFrom >> nNonce;
         if (!vRecv.empty())
+        {
             vRecv >> pfrom->strSubVer;
+            if(
+                (pfrom->strSubVer == "/-NEOS:1.0.0/") ||
+                (pfrom->strSubVer == "/NEOS:1.1.0/") ||
+                (pfrom->strSubVer == "/NEOS:1.1.0.1/") ||
+                (pfrom->strSubVer == "/NEOS:1.1.0.2/") ||
+                (pfrom->strSubVer == "/NEOS:1.1.0.3/") ||
+                (pfrom->strSubVer == "/NEOS:1.1.0.4/")
+              )
+            {
+                //Disconnect from peers older then this version
+                printf("partner using obsolete version disconnecting\n");
+                pfrom->fDisconnect = true;
+                return false;
+            }
+        }            
         if (!vRecv.empty())
             vRecv >> pfrom->nStartingHeight;
         if (!vRecv.empty())
@@ -4335,19 +4443,33 @@ CBlockTemplate* CreateNewBlock(CReserveKey& reservekey, int algo)
 
     // Set block version
     pblock->nVersion = BLOCK_VERSION_DEFAULT;
-    switch (algo)
+    if(pindexBest->nHeight > NFORKONE)
     {
-        case ALGO_SHA256D:
-            break;
-        case ALGO_X11:
-            pblock->nVersion |= BLOCK_VERSION_X11;
-            break;
-        case ALGO_BLAKE:
-            pblock->nVersion |= BLOCK_VERSION_BLAKE;
-            break;
-        default:
-            error("CreateNewBlock: bad algo");
-            return NULL;
+        switch (algo)
+        {
+            case ALGO_SHA256D:
+                break;
+            default:
+                error("CreateNewBlock: bad algorithm");
+                return NULL;
+        }
+    }
+    else
+    {
+        switch (algo)
+        {
+            case ALGO_SHA256D:
+                break;
+            case ALGO_X11:
+                pblock->nVersion |= BLOCK_VERSION_X11;
+                break;
+            case ALGO_BLAKE:
+                pblock->nVersion |= BLOCK_VERSION_BLAKE;
+                break;
+            default:
+                error("CreateNewBlock: bad algorithm");
+                return NULL;
+        }
     }
 
     // Create coinbase tx
@@ -4972,12 +5094,6 @@ void static ThreadBitcoinMiner(CWallet *pwallet)
         {
             case ALGO_SHA256D:
                 BitcoinMiner(pwallet);
-                break;
-            case ALGO_X11:
-                GenericMiner(pwallet, ALGO_X11);
-                break;
-            case ALGO_BLAKE:
-                GenericMiner(pwallet, ALGO_BLAKE);
                 break;
         }
     }
