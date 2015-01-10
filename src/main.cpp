@@ -2973,6 +2973,8 @@ bool VerifyDB(int nCheckLevel, int nCheckDepth)
             } else
                 nGoodTransactions += block.vtx.size();
         }
+        if (ShutdownRequested())
+            return true;
     }
     if (pindexFailure)
         return error("VerifyDB() : *** coin database inconsistencies found (last %i blocks, %i good transactions before that)\n", pindexBest->nHeight - pindexFailure->nHeight + 1, nGoodTransactions);
