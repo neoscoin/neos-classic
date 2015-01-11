@@ -19,7 +19,7 @@ script:
 notifications:
   irc:
     channels:
-      - "chat.freenode.net#HarpuasLounge"
+      - "chat.freenode.net#neoscoin-dev"
     template:
       - "%{repository}/%{branch} (%{commit} - %{author}): %{message}"
       - "Alt Message : %{repository_slug} - (%{commit} - %{author}): %{message}, Build Time: %{duration}"
