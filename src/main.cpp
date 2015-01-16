@@ -2973,6 +2973,8 @@ bool VerifyDB(int nCheckLevel, int nCheckDepth)
             } else
                 nGoodTransactions += block.vtx.size();
         }
+        if (ShutdownRequested())
+            return true;
     }
     if (pindexFailure)
         return error("VerifyDB() : *** coin database inconsistencies found (last %i blocks, %i good transactions before that)\n", pindexBest->nHeight - pindexFailure->nHeight + 1, nGoodTransactions);
@@ -4962,121 +4964,6 @@ void static BitcoinMiner(CWallet *pwallet)
                 // Changing pblock->nTime can change work required on testnet:
                 nBlockBits = ByteReverse(pblock->nBits);
                 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
-            }
-        }
-    } 
-}
-
-void static GenericMiner(CWallet *pwallet, int algo)
-{
-    // Each thread has its own key and counter
-    CReserveKey reservekey(pwallet);
-    unsigned int nExtraNonce = 0;
-
-    while (true)
-    {
-        MinerWaitOnline();
-
-        //
-        // Create new block
-        //
-        unsigned int nTransactionsUpdatedLast = nTransactionsUpdated;
-        CBlockIndex* pindexPrev = pindexBest;
-
-        auto_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(reservekey, algo));
-        if (!pblocktemplate.get())
-            return;
-        CBlock *pblock = &pblocktemplate->block;
-        IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
-
-        printf("Running %s miner with %"PRIszu" transactions in block (%u bytes)\n", 
-               GetAlgoName(algo).c_str(),
-               pblock->vtx.size(),
-               ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
-
-        //
-        // Search
-        //
-        uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
-        int64 nStart = GetTime();
-        uint256 hash;
-
-        pblock->nNonce = GetRand(0xffffffffff);
-
-        while (true)
-        {
-            unsigned int nHashesDone = 0;
-
-            for(int i = 0; i < 1000; i++)
-            {
-
-            hash = pblock->GetPoWHash(algo);
-            if (hash <= hashTarget){
-                SetThreadPriority(THREAD_PRIORITY_NORMAL);
-
-                pblock->print();
-
-                CheckWork(pblock, *pwalletMain, reservekey);
-                SetThreadPriority(THREAD_PRIORITY_LOWEST);
-                break;
-            }
-            ++pblock->nNonce;
-
-            nHashesDone++;
-            }
-            if (hash <= hashTarget){break;}
-
-
-            // Meter hashes/sec
-            static int64 nHashCounter;
-            if (nHPSTimerStart == 0)
-            {
-                nHPSTimerStart = GetTimeMillis();
-                nHashCounter = 0;
-            }
-            else
-                 nHashCounter += nHashesDone;
-
-
-            if (GetTimeMillis() - nHPSTimerStart > 4000)
-            {
-                static CCriticalSection cs;
-                {
-                    LOCK(cs);
-                    if (GetTimeMillis() - nHPSTimerStart > 4000)
-                    {
-                        dHashesPerSec = 1000.0 * nHashCounter / (GetTimeMillis() - nHPSTimerStart);
-                        nHPSTimerStart = GetTimeMillis();
-                        nHashCounter = 0;
-                        static int64 nLogTime;
-                        if (GetTime() - nLogTime > 30 * 60)
-                        {
-                            nLogTime = GetTime();
-                            printf("hashmeter %6.0f khash/s\n", dHashesPerSec/1000.0);
-                        }
-                    }
-                }
-            }
-
-            // Check for stop or if block needs to be rebuilt
-            boost::this_thread::interruption_point();
-            if (vNodes.empty() && Params().NetworkID() != CChainParams::REGTEST)
-                break;
-            if (++pblock->nNonce >= 0xffff0000)
-                break;
-            if (nTransactionsUpdated != nTransactionsUpdatedLast && GetTime() - nStart > 60)
-                break;
-            if (pindexPrev != pindexBest)
-                break;
-
-            // Update nTime every few seconds
-            UpdateTime(*pblock, pindexPrev);
-            // nBlockTime = ByteReverse(pblock->nTime);
-            if (TestNet())
-            {
-                // Changing pblock->nTime can change work required on testnet:
-                // nBlockBits = ByteReverse(pblock->nBits);
-                // hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
             }
         }
     } 
