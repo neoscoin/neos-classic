@@ -1019,7 +1019,7 @@ void ServiceConnection(AcceptedConnection *conn)
             conn->stream() << HTTPReply(HTTP_UNAUTHORIZED, "", false) << std::flush;
             break;
         }
-        if (mapHeaders["connection"] == "close")
+        if ((mapHeaders["connection"] == "close") || (!GetBoolArg("-rpckeepalive", false)))
             fRun = false;
 
         JSONRequest jreq;
