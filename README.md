@@ -1,6 +1,6 @@
 NEOSCOIN (Crypto done differently)
 ==================================
-- Multiple Algorithms: SHA256D, BLAKE, X11
+- Algorithm: SHA256D
 - Total Coins: 21 million
 - Block Time: 5 minutes
 - Block Reward: 50 NEOS (Fair Launch: Blocks 2-1001 0.1 NEOS)
@@ -11,10 +11,10 @@ NEOSCOIN (Crypto done differently)
 
 SOCIAL AND NETWORKING
 ---------------------
-- WEBSITE: http://neoscoin.com
-- TWITTER: http://twitter.com/NeosCoin
-- COMMUNITY FORUM: http://community.neoscoin.com
-- HELP DESK: http://support.neoscoin.com
+- WEBSITE: [http://neoscoin.com](http://neoscoin.com)
+- TWITTER: [http://twitter.com/NeosCoin](http://twitter.com/NeosCoin)
+- COMMUNITY FORUM: [http://forum.neoscoin.com](http://forum.neoscoin.com)
+- HELP DESK: [http://support.neoscoin.com](http://support.neoscoin.com)
 - IRC: #neoscoin on Freenode
 
 
