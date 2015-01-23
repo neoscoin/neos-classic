@@ -1,0 +1,30 @@
+HOWTO SETUP A SUPERNODE
+=======================
+This document is for sysadmins who want to contribute excess upstream bandwidth to
+help strengthen the global network.  If you do not understand these instructions
+you probably don't want to be a supernode.  10mbit+ is recommended.
+
+1. Edit the configuration file
+
+# Run as background daemon
+daemon=1
+# MaxConnections
+maxconnections=500
+
+2. The following Linux iptables rules limits the number of connections to
+   the TCP port per IP address and per /24 subnet.  This protects against
+   a connection exhaustion DoS attack.  If you have lots of RAM and bandwidth
+   you can increase these limits.
+
+# Allow eight connections per IPv4 /24 subnet
+-A INPUT -p tcp --syn --dport 15005 -m connlimit --connlimit-above 8 --connlimit-mask 24 -j REJECT --reject-with tcp-reset
+# Allow two connection per IPv4 address
+-A INPUT -p tcp --syn --dport 15005 -m connlimit --connlimit-above 2 -j REJECT --reject-with tcp-reset
+# Allow TCP connection if not rejected by the previous limit
+-A INPUT -m state --state NEW -m tcp -p tcp --dport 15005 -j ACCEPT
+
+3. https://github.com/bellacoin/neoscoin/blob/master/contrib/qos/tc.sh
+   Modify this script if you want to limit upstream bandwidth on Linux.
+   Change the LIMIT to whatever you want.
+
+4. Test incoming TCP port 15005 connections
