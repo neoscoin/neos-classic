@@ -6,7 +6,8 @@
 # Mac OS X makefile for neoscoin
 # Originally by Laszlo Hanyecz (solar@heliacal.net)
 
-CXX=llvm-g++
+CXX=clang++
+C=clang
 DEPSDIR=/opt/local
 
 INCLUDEPATHS= \
@@ -165,7 +166,7 @@ obj/%.o: %.cpp
 	  rm -f $(@:%.o=%.d)
 
 obj/%.o: %.c
-	$(CXX) -c $(CFLAGS) -fpermissive -MMD -MF $(@:%.o=%.d) -o $@ $<
+	$(C) -c $(CFLAGS) -fpermissive -MMD -MF $(@:%.o=%.d) -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	  sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	      -e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
