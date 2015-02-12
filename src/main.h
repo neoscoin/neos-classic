@@ -151,8 +151,6 @@ bool LoadBlockIndex();
 void UnloadBlockIndex();
 /** Verify consistency of the block and coin databases */
 bool VerifyDB(int nCheckLevel, int nCheckDepth);
-/** Print the loaded block tree */
-void PrintBlockTree();
 /** Find a block by height in the currently-connected chain */
 CBlockIndex* FindBlockByHeight(int nHeight);
 /** Process protocol messages received from a given node */
