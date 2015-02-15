@@ -17,23 +17,25 @@
 
 CXX ?= g++
 
-USE_UPNP:=0
+USE_UPNP:=1
 USE_IPV6:=1
 
 DEPSDIR?=/usr/local
-BOOST_SUFFIX?=-mgw48-mt-s-1_55
+BOOST_SUFFIX?=-mgw49-mt-s-1_57
 
 INCLUDEPATHS= \
  -I"$(CURDIR)" \
- -I"c:/depsnew/boost_1_55_0" \
- -I"c:/depsnew/db-4.8.30.NC/build_unix" \
- -I"c:/depsnew/openssl-1.0.1g/include"
+ -I"c:/dev/coindeps32/boost_1_57_0/include" \
+ -I"c:/dev/coindeps32/db-4.8/include" \
+ -I"c:/dev/coindeps32/openssl-1.0.2/include" \
+ -I"c:/dev/coindeps32/miniupnpc-1.9"
 
 LIBPATHS= \
  -L"$(CURDIR)/leveldb" \
- -L"c:/depsnew/boost_1_55_0/stage/lib" \
- -L"c:/depsnew/db-4.8.30.NC/build_unix" \
- -L"c:/depsnew/openssl-1.0.1g"
+ -L"c:/dev/coindeps32/boost_1_57_0/lib" \
+ -L"c:/dev/coindeps32/db-4.8/lib" \
+ -L"c:/dev/coindeps32/openssl-1.0.2/lib" \
+ -L"c:/dev/coindeps32/miniupnpc-1.9"
 
 LIBS= \
  -l leveldb \
