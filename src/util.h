@@ -101,6 +101,10 @@ T* alignup(T* p)
 #else
 #define MAX_PATH            1024
 #endif
+// As Solaris does not have the MSG_NOSIGNAL flag for send(2) syscall, it is defined as 0
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
 
 inline void MilliSleep(int64 n)
 {
