@@ -14,8 +14,8 @@
 
 #include <stdio.h>
 
-enum { 
-    ALGO_SHA256D = 0, 
+enum {
+    ALGO_SHA256D = 0,
     ALGO_X11     = 1,
     ALGO_BLAKE   = 2,
     NUM_ALGOS };
@@ -56,7 +56,7 @@ inline std::string GetAlgoName(int Algo)
         case ALGO_BLAKE:
             return std::string("blake");
     }
-    return std::string("unknown");       
+    return std::string("unknown");
 }
 
 class CTransaction;
@@ -437,7 +437,13 @@ public:
     int nVersion;
 
     // construct a CCoins from a CTransaction, at a given height
-    CCoins(const CTransaction &tx, int nHeightIn) : fCoinBase(tx.IsCoinBase()), vout(tx.vout), nHeight(nHeightIn), nVersion(tx.nVersion) { }
+    CCoins(const CTransaction &tx, int nHeightIn) : fCoinBase(tx.IsCoinBase()), vout(tx.vout), nHeight(nHeightIn), nVersion(tx.nVersion) {
+        BOOST_FOREACH(CTxOut &txout, vout) {
+            if (txout.scriptPubKey.IsUnspendable())
+                txout.SetNull();
+        }
+        Cleanup();
+    }
 
     // empty constructor
     CCoins() : fCoinBase(false), vout(0), nHeight(0), nVersion(0) { }
