@@ -15,7 +15,7 @@ void ScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out);
 double GetDifficulty(const CBlockIndex* blockindex, int algo)
 {
     unsigned int nBits;
-    
+
     // Floating point number that is a multiple of the minimum difficulty,
     // minimum difficulty = 1.0.
     if (blockindex == NULL)
@@ -77,6 +77,7 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex)
     result.push_back(Pair("nonce", (boost::uint64_t)block.nNonce));
     result.push_back(Pair("bits", HexBits(block.nBits)));
     result.push_back(Pair("difficulty", GetDifficulty(blockindex, miningAlgo)));
+    result.push_back(Pair("chainwork", blockindex->nChainWork.GetHex()));
 
     if (blockindex->pprev)
         result.push_back(Pair("previousblockhash", blockindex->pprev->GetBlockHash().GetHex()));

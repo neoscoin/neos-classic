@@ -2,39 +2,58 @@
 # Distributed under the MIT/X11 software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-DEPSDIR:=/usr/i686-w64-mingw32
+# Makefile for the MinGW g++ compiler/toolchain
+#
+# Assumes Berkeley DB, Boost, and OpenSSL have all been compiled and installed
+# into /usr/local (/usr/local/include, /usr/local/lib).
+#
+# If dependencies are somewhere else, run 'make DEPSDIR=/path/'
+#
+# Boost libraries are given wacky names that include the particular version of
+# boost you're using; set BOOST_SUFFIX appropriately.
+#
+# 'make clean' assumes it is running inside a MSYS shell, and uses 'rm'
+# to remove files.
 
-CC := i686-w64-mingw32-gcc
-CXX := i686-w64-mingw32-g++
+CXX ?= g++
 
-USE_UPNP:=0
+USE_UPNP:=1
 USE_IPV6:=1
+
+DEPSDIR?=/usr/local
+BOOST_SUFFIX?=-mgw49-mt-s-1_57
 
 INCLUDEPATHS= \
  -I"$(CURDIR)" \
- -I"$(CURDIR)"/obj \
- -I"$(DEPSDIR)/include" \
- -I"$(DEPSDIR)"
+ -I"c:/dev/coindeps64/boost_1_57_0/include" \
+ -I"c:/dev/coindeps64/db-4.8/include" \
+ -I"c:/dev/coindeps64/openssl-1.0.2/include" \
+ -I"c:/dev/coindeps64/miniupnpc-1.9"
 
 LIBPATHS= \
- -L"$(DEPSDIR)/lib"
+ -L"$(CURDIR)/leveldb" \
+ -L"c:/dev/coindeps64/boost_1_57_0/lib" \
+ -L"c:/dev/coindeps64/db-4.8/lib" \
+ -L"c:/dev/coindeps64/openssl-1.0.2/lib" \
+ -L"c:/dev/coindeps64/miniupnpc-1.9"
 
 LIBS= \
-  $(CURDIR)/leveldb/libleveldb.a $(CURDIR)/leveldb/libmemenv.a \
- -l boost_system-mt-s \
- -l boost_filesystem-mt-s \
- -l boost_program_options-mt-s \
- -l boost_thread_win32-mt-s \
- -l boost_chrono-mt-s \
+ -l leveldb \
+ -l memenv \
+ -l boost_system$(BOOST_SUFFIX) \
+ -l boost_filesystem$(BOOST_SUFFIX) \
+ -l boost_program_options$(BOOST_SUFFIX) \
+ -l boost_thread$(BOOST_SUFFIX) \
+ -l boost_chrono$(BOOST_SUFFIX) \
  -l db_cxx \
  -l ssl \
  -l crypto
 
 DEFS=-D_MT -DWIN32 -D_WINDOWS -DBOOST_THREAD_USE_LIB -DBOOST_SPIRIT_THREADSAFE
 DEBUGFLAGS=-g
-xCXXFLAGS=-O2 -w -Wall -Wextra -Wformat -Wformat-security -Wno-unused-parameter $(DEBUGFLAGS) $(DEFS) $(INCLUDEPATHS) $(CXXFLAGS)
+CFLAGS=-mthreads -O2 -w -Wall -Wextra -Wformat -Wformat-security -Wno-unused-parameter $(DEBUGFLAGS) $(DEFS) $(INCLUDEPATHS)
 # enable: ASLR, DEP and large address aware
-xLDFLAGS=-Wl,--dynamicbase -Wl,--nxcompat -Wl,--large-address-aware -static$(LDFLAGS)
+LDFLAGS=-Wl,--dynamicbase -Wl,--nxcompat -Wl,-static
 
 TESTDEFS = -DTEST_DATA_DIR=$(abspath test/data)
 
@@ -42,9 +61,8 @@ ifndef USE_UPNP
 	override USE_UPNP = -
 endif
 ifneq (${USE_UPNP}, -)
-	LIBPATHS += -L"$(DEPSDIR)/miniupnpc"
-	LIBS += -l miniupnpc -l iphlpapi
-	DEFS += -DMINIUPNP_STATICLIB -DUSE_UPNP=$(USE_UPNP)
+ LIBS += -l miniupnpc -l iphlpapi
+ DEFS += -DMINIUPNP_STATICLIB -DUSE_UPNP=$(USE_UPNP)
 endif
 
 ifneq (${USE_IPV6}, -)
@@ -85,9 +103,9 @@ OBJS= \
     obj/util.o \
     obj/wallet.o \
     obj/walletdb.o \
-    obj/noui.o \
     obj/hash.o \
     obj/bloom.o \
+    obj/noui.o \
     obj/leveldb.o \
     obj/txdb.o \
     obj/chainparams.o \
@@ -105,40 +123,41 @@ OBJS= \
 
 all: neoscoind.exe
 
-DEFS += -I"$(CURDIR)/leveldb/include"
-DEFS += -I"$(CURDIR)/leveldb/helpers"
-leveldb/libleveldb.a:
-	@echo "Building LevelDB ..." && cd leveldb && TARGET_OS=OS_WINDOWS_CROSSCOMPILE $(MAKE) CC=$(CC) CXX=$(CXX) OPT="$(xCXXFLAGS)" libleveldb.a libmemenv.a && i586-mingw32msvc-ranlib libleveldb.a && i586-mingw32msvc-ranlib libmemenv.a && cd ..
+test check: test_neoscoin.exe FORCE
+	test_neoscoin.exe
 
-obj/build.h: FORCE
-	/bin/sh ../share/genbuild.sh obj/build.h
-version.cpp: obj/build.h
-DEFS += -DHAVE_BUILD_INFO
+#
+# LevelDB support
+#
+DEFS += $(addprefix -I,$(CURDIR)/leveldb/include)
+DEFS += $(addprefix -I,$(CURDIR)/leveldb/helpers)
+
+leveldb/libleveldb.a:
+	cd leveldb && $(MAKE) CC=$(CC) CXX=$(CXX) OPT="$(CFLAGS)" TARGET_OS=NATIVE_WINDOWS libleveldb.a libmemenv.a && cd ..
+
+
 
 obj/%.o: %.cpp $(HEADERS)
-	$(CXX) -c $(xCXXFLAGS) -o $@ $<
+	$(CXX) -c $(CFLAGS) -o $@ $<
 
 obj/%.o: %.c $(HEADERS)
-	$(CXX) -c $(xCXXFLAGS) -fpermissive -o $@ $<
+	$(CXX) -c $(CFLAGS) -fpermissive -o $@ $<
 
 neoscoind.exe: $(OBJS:obj/%=obj/%)
-	$(CXX) $(xCXXFLAGS) $(xLDFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
+	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
 
 TESTOBJS := $(patsubst test/%.cpp,obj-test/%.o,$(wildcard test/*.cpp))
 
 obj-test/%.o: test/%.cpp $(HEADERS)
-	$(CXX) -c $(TESTDEFS) $(xCXXFLAGS) -o $@ $<
+	$(CXX) -c $(TESTDEFS) $(CFLAGS) -o $@ $<
 
 test_neoscoin.exe: $(TESTOBJS) $(filter-out obj/init.o obj/neoscoind.o,$(OBJS:obj/%=obj/%))
-	$(CXX) $(xCXXFLAGS) $(xLDFLAGS) -o $@ $(LIBPATHS) $^ -lboost_unit_test_framework-mt-s $(LIBS)
-
+	$(CXX) $(CFLAGS) $(LDFLAGS) -o $@ $(LIBPATHS) $^ -lboost_unit_test_framework$(BOOST_SUFFIX) $(LIBS)
 
 clean:
-	-rm -f obj/*.o
-	-rm -f neoscoind.exe
-	-rm -f obj-test/*.o
-	-rm -f test_neoscoin.exe
-	-rm -f obj/build.h
-	cd leveldb && TARGET_OS=OS_WINDOWS_CROSSCOMPILE $(MAKE) clean && cd ..
+	rm -f neoscoind.exe test_neoscoin.exe
+	rm -f obj/*
+	rm -f obj-test/*
+	cd leveldb && $(MAKE) TARGET_OS=NATIVE_WINDOWS clean && cd ..
 
 FORCE:

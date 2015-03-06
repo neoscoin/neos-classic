@@ -10,6 +10,10 @@
 #include "protocol.h"
 #include "util.h"
 
+#include <boost/assign/list_of.hpp>
+
+using namespace boost::assign;
+
 //
 // Main network
 //
@@ -37,7 +41,7 @@ public:
 
         // Build the genesis block. Note that the output of the genesis coinbase cannot
         // be spent as it did not originally exist in the database.
-  
+
         const char* pszTimestamp = "New Cease-Fire in Gaza as Israel Winds Down Military Operation";
         CTransaction txNew;
         txNew.vin.resize(1);
@@ -52,24 +56,26 @@ public:
         genesis.nTime    = 1407194502;
         genesis.nBits    = 0x1e0fffff;
         genesis.nNonce   = 573175;
-        
+
         hashGenesisBlock = genesis.GetHash();
-       
+
         assert(hashGenesisBlock == uint256("0x000001719b6d97b1920ca70cbdfa3dbe41064c360181fadc958c1922e6b69327"));
         assert(genesis.hashMerkleRoot == uint256("0x7f8c847ddbe567dd7a0dd0a4ca297a700cf20d748d0220ea350fc0ebcb3baf5c"));
 
         vSeeds.push_back(CDNSSeedData("seed.neoscoin.com", "seed.neoscoin.com"));
 
-        base58Prefixes[PUBKEY_ADDRESS] = 53; 
-        base58Prefixes[SCRIPT_ADDRESS] = 5;
-        base58Prefixes[SECRET_KEY] = 177;
+        base58Prefixes[PUBKEY_ADDRESS] = list_of(53);
+        base58Prefixes[SCRIPT_ADDRESS] = list_of(5);
+        base58Prefixes[SECRET_KEY] =     list_of(177);
+        base58Prefixes[EXT_PUBLIC_KEY] = list_of(0x04)(0x88)(0xB2)(0x1E);
+        base58Prefixes[EXT_SECRET_KEY] = list_of(0x04)(0x88)(0xAD)(0xE4);
 
         // Convert the pnSeeds array into usable address objects.
         for (unsigned int i = 0; i < ARRAYLEN(pnSeed); i++)
         {
             // It'll only connect to one or two seed nodes because once it connects,
             // it'll get a pile of addresses with newer timestamps.
-            // Seed nodes are given a random 'last seen time' 
+            // Seed nodes are given a random 'last seen time'
             const int64 nTwoDays = 2 * 24 * 60 * 60;
             struct in_addr ip;
             memcpy(&ip, &pnSeed[i], sizeof(ip));
@@ -113,17 +119,18 @@ public:
         genesis.nNonce = 58709;
 
         hashGenesisBlock = genesis.GetHash();
-        
+
         assert(hashGenesisBlock == uint256("0x0000008ec4380e593049003493e5576316ab51552eea1e91ce30176666a2386e"));
 
         vFixedSeeds.clear();
         vSeeds.clear();
         vSeeds.push_back(CDNSSeedData("testnet.neoscoin.com", "testnet.neoscoin.com"));
 
-        base58Prefixes[PUBKEY_ADDRESS] = 63;
-        base58Prefixes[SCRIPT_ADDRESS] = 188;
-        base58Prefixes[SECRET_KEY] = 239;
-
+        base58Prefixes[PUBKEY_ADDRESS] = list_of(63);
+        base58Prefixes[SCRIPT_ADDRESS] = list_of(188);
+        base58Prefixes[SECRET_KEY]     = list_of(239);
+        base58Prefixes[EXT_PUBLIC_KEY] = list_of(0x04)(0x35)(0x87)(0xCF);
+        base58Prefixes[EXT_SECRET_KEY] = list_of(0x04)(0x35)(0x83)(0x94);
     }
     virtual Network NetworkID() const { return CChainParams::TESTNET; }
 };
@@ -153,11 +160,7 @@ public:
 
         assert(hashGenesisBlock == uint256("011af0c490c4b0ac287494cf4523a4f2afeb43fc73b8074772234f15a3afb7789"));
 
-        vSeeds.clear();  
-
-        base58Prefixes[PUBKEY_ADDRESS] = 0;
-        base58Prefixes[SCRIPT_ADDRESS] = 5;
-        base58Prefixes[SECRET_KEY] = 128;
+        vSeeds.clear();
     }
 
     virtual bool RequireRPCPassword() const { return false; }

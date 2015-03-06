@@ -151,8 +151,6 @@ bool LoadBlockIndex();
 void UnloadBlockIndex();
 /** Verify consistency of the block and coin databases */
 bool VerifyDB(int nCheckLevel, int nCheckDepth);
-/** Print the loaded block tree */
-void PrintBlockTree();
 /** Find a block by height in the currently-connected chain */
 CBlockIndex* FindBlockByHeight(int nHeight);
 /** Process protocol messages received from a given node */
@@ -1098,6 +1096,7 @@ public:
 class CTxMemPool
 {
 public:
+    static bool fChecks;
     mutable CCriticalSection cs;
     std::map<uint256, CTransaction> mapTx;
     std::map<COutPoint, CInPoint> mapNextTx;
@@ -1109,6 +1108,7 @@ public:
     void clear();
     void queryHashes(std::vector<uint256>& vtxid);
     void pruneSpent(const uint256& hash, CCoins &coins);
+    void check(CCoinsViewCache *pcoins) const;
 
     unsigned long size()
     {
