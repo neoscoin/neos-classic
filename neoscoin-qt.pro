@@ -1,7 +1,7 @@
 TEMPLATE = app
 TARGET = neoscoin-qt
 macx:TARGET = "NeosCoin-Qt"
-VERSION = 1.2.0.2
+VERSION = 1.2.1.0
 INCLUDEPATH += src src/json src/qt
 QT += core gui network
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
