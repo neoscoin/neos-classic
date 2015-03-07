@@ -155,10 +155,23 @@ static void initTranslations(QTranslator &qtTranslatorBase, QTranslator &qtTrans
 #ifndef BITCOIN_QT_TEST
 int main(int argc, char *argv[])
 {
+    bool fMissingDatadir = false;
+    bool fSelParFromCLFailed = false;
+
     fHaveGUI = true;
 
     // Command-line options take precedence:
     ParseParameters(argc, argv);
+    // ... then neoscoin.conf:
+    if (!boost::filesystem::is_directory(GetDataDir(false))) {
+        fMissingDatadir = true;
+    } else {
+        ReadConfigFile(mapArgs, mapMultiArgs);
+    }
+    // Check for -testnet or -regtest parameter (TestNet() calls are only valid after this clause)
+    if (!SelectParamsFromCommandLine()) {
+        fSelParFromCLFailed = true;
+    }
 
 #if QT_VERSION < 0x050000
     // Internal string conversion is all UTF-8
@@ -175,8 +188,8 @@ int main(int argc, char *argv[])
     // Application identification (must be set before OptionsModel is initialized,
     // as it is used to locate QSettings)
     QApplication::setOrganizationName("NeosCoin");
-    QApplication::setOrganizationDomain("neoscoin.org");
-    if (GetBoolArg("-testnet", false)) // Separate UI settings for testnet
+    QApplication::setOrganizationDomain("neoscoin.com");
+    if (TestNet()) // Separate UI settings for testnet
         QApplication::setApplicationName("NeosCoin-Qt-testnet");
     else
         QApplication::setApplicationName("NeosCoin-Qt");
@@ -184,6 +197,17 @@ int main(int argc, char *argv[])
     // Now that QSettings are accessible, initialize translations
     QTranslator qtTranslatorBase, qtTranslator, translatorBase, translator;
     initTranslations(qtTranslatorBase, qtTranslator, translatorBase, translator);
+
+    // Now that translations are initialized check for errors and allow a translatable error message
+    if (fMissingDatadir) {
+        QMessageBox::critical(0, QObject::tr("NeosCoin"),
+                              QObject::tr("Error: Specified data directory \"%1\" does not exist.").arg(QString::fromStdString(mapArgs["-datadir"])));
+        return 1;
+    }
+    else if (fSelParFromCLFailed) {
+        QMessageBox::critical(0, QObject::tr("NeosCoin"), QObject::tr("Error: Invalid combination of -regtest and -testnet."));
+        return 1;
+    }
 
     // User language is set up: pick a data directory
     //Intro::pickDataDirectory();
@@ -197,16 +221,7 @@ int main(int argc, char *argv[])
     // Install global event filter that makes sure that long tooltips can be word-wrapped
     app.installEventFilter(new GUIUtil::ToolTipToRichTextFilter(TOOLTIP_WRAP_THRESHOLD, &app));
 
-    // ... then neoscoin.conf:
-    if (!boost::filesystem::is_directory(GetDataDir(false)))
-    {
-        QMessageBox::critical(0, QObject::tr("NeosCoin"),
-                              QObject::tr("Error: Specified data directory \"%1\" does not exist.").arg(QString::fromStdString(mapArgs["-datadir"])));
-        return 1;
-    }
-    ReadConfigFile(mapArgs, mapMultiArgs);
-
-    // ... then GUI settings:
+    // ... now GUI settings:
     OptionsModel optionsModel;
 
     // Subscribe to global signals from core
@@ -246,7 +261,7 @@ int main(int argc, char *argv[])
 
         boost::thread_group threadGroup;
 
-        BitcoinGUI window(GetBoolArg("-testnet", false), 0);
+        BitcoinGUI window(TestNet(), 0);
         guiref = &window;
 
         QTimer* pollShutdownTimer = new QTimer(guiref);
