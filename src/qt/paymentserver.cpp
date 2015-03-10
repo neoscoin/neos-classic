@@ -48,6 +48,8 @@ using namespace boost;
 
 const int BITCOIN_IPC_CONNECT_TIMEOUT = 1000; // milliseconds
 const QString BITCOIN_IPC_PREFIX("neoscoin:");
+const char* BITCOIN_REQUEST_MIMETYPE = "application/neoscoin-paymentrequest";
+const char* BITCOIN_PAYMENTACK_MIMETYPE = "application/neoscoin-paymentack";
 
 X509_STORE* PaymentServer::certStore = NULL;
 void PaymentServer::freeCertStore()
@@ -483,7 +485,7 @@ PaymentServer::processPaymentRequest(PaymentRequestPlus& request,
                 // Insecure payments to custom bitcoin addresses are not supported
                 // (there is no good way to tell the user where they are paying in a way
                 // they'd have a chance of understanding).
-                emit reportError(tr("Payment request error"), 
+                emit reportError(tr("Payment request error"),
                                  tr("Insecure requests to custom payment scripts unsupported"),
                                  CClientUIInterface::MODAL);
                 return false;
@@ -501,6 +503,7 @@ PaymentServer::fetchRequest(const QUrl& url)
     netRequest.setAttribute(QNetworkRequest::User, "PaymentRequest");
     netRequest.setUrl(url);
     netRequest.setRawHeader("User-Agent", CLIENT_NAME.c_str());
+    netRequest.setRawHeader("Accept", BITCOIN_REQUEST_MIMETYPE);
     netManager->get(netRequest);
 }
 
@@ -514,8 +517,9 @@ PaymentServer::fetchPaymentACK(CWallet* wallet, SendCoinsRecipient recipient, QB
     QNetworkRequest netRequest;
     netRequest.setAttribute(QNetworkRequest::User, "PaymentACK");
     netRequest.setUrl(QString::fromStdString(details.payment_url()));
-    netRequest.setHeader(QNetworkRequest::ContentTypeHeader, "application/bitcoin-payment");
+    netRequest.setHeader(QNetworkRequest::ContentTypeHeader, "application/neoscoin-payment");
     netRequest.setRawHeader("User-Agent", CLIENT_NAME.c_str());
+    netRequest.setRawHeader("Accept", BITCOIN_PAYMENTACK_MIMETYPE);
 
     payments::Payment payment;
     payment.set_merchant_data(details.merchant_data());
