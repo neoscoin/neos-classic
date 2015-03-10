@@ -22,6 +22,7 @@ CONFIG += static
 #    OPENSSL_INCLUDE_PATH OPENSSL_LIB_PATH
 #    PROTOBUF_INCLUDE_PATH PROTOBUF_LIB_PATH
 #    PROTOC : protocol buffer compiler tool
+#    QRCODE_INCLUDE_PATH QRCODE_LIB_PATH
 
 OBJECTS_DIR = build
 MOC_DIR = build
@@ -55,13 +56,16 @@ QMAKE_CXXFLAGS *= -D_FORTIFY_SOURCE=2
 win32:QMAKE_LFLAGS *= -Wl,--dynamicbase -Wl,--nxcompat
 # on Windows: enable GCC large address aware linker flag
 win32:QMAKE_LFLAGS *= -Wl,--large-address-aware -static
+# i686-w64-mingw32
+win32:QMAKE_LFLAGS *= -static-libgcc -static-libstdc++
 
 # use: qmake "USE_QRCODE=1"
 # libqrencode (http://fukuchi.org/works/qrencode/index.en.html) must be installed for support
 contains(USE_QRCODE, 1) {
     message(Building with QRCode support)
     DEFINES += USE_QRCODE
-    LIBS += -lqrencode
+    INCLUDEPATH += $$QRCODE_INCLUDE_PATH
+    LIBS += $$join(QRCODE_LIB_PATH,,-L) -lqrencode
 }
 
 # use: qmake "USE_UPNP=1" ( enabled by default; default)
@@ -94,6 +98,7 @@ contains(USE_DBUS, 1) {
 contains(USE_IPV6, -) {
     message(Building without IPv6 support)
 } else {
+    message(Building with IPv6 support)
     count(USE_IPV6, 0) {
         USE_IPV6=1
     }
