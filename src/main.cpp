@@ -76,8 +76,6 @@ int64 nHPSTimerStart = 0;
 // Settings
 int64 nTransactionFee = 0;
 
-int nTargetSpacingSwitch = 2;
-
 //////////////////////////////////////////////////////////////////////////////
 //
 // dispatching functions
@@ -1376,7 +1374,7 @@ unsigned int static GetNextWorkRequired_V1(const CBlockIndex* pindexLast, const 
         // Special difficulty rule for testnet:
         // If the new block's timestamp is more than 2* 10 minutes
         // then allow mining of a min-difficulty block.
-        if (pblock->nTime > pindexLast->nTime + nTargetSpacingSwitch*2)
+        if (pblock->nTime > pindexLast->nTime + 4)
             return nProofOfWorkLimit;
         else
         {
