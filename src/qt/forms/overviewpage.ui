@@ -54,7 +54,7 @@
                </font>
               </property>
               <property name="text">
-               <string>WALLET</string>
+               <string>BALANCES</string>
               </property>
              </widget>
             </item>
