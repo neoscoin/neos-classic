@@ -1,7 +1,7 @@
 TEMPLATE = app
 TARGET = neoscoin-qt
 macx:TARGET = "NeosCoin-Qt"
-VERSION = 1.2.0.2
+VERSION = 1.2.1.0
 INCLUDEPATH += src src/json src/qt
 QT += core gui network
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
@@ -17,12 +17,18 @@ CONFIG += static
 # or when linking against a specific BerkelyDB version: BDB_LIB_SUFFIX=-4.8
 
 # Dependency library locations can be customized with:
-#    BOOST_INCLUDE_PATH, BOOST_LIB_PATH, BDB_INCLUDE_PATH,
-#    BDB_LIB_PATH, OPENSSL_INCLUDE_PATH and OPENSSL_LIB_PATH respectively
+#    BOOST_INCLUDE_PATH BOOST_LIB_PATH,
+#    BDB_INCLUDE_PATH BDB_LIB_PATH,
+#    OPENSSL_INCLUDE_PATH OPENSSL_LIB_PATH
+#    PROTOBUF_INCLUDE_PATH PROTOBUF_LIB_PATH
+#    PROTOC : protocol buffer compiler tool
+#    QRCODE_INCLUDE_PATH QRCODE_LIB_PATH
 
 OBJECTS_DIR = build
 MOC_DIR = build
 UI_DIR = build
+PROTO_DIR = build
+PROTO_PATH = src/qt
 
 # use: qmake "RELEASE=1"
 contains(RELEASE, 1) {
@@ -50,13 +56,16 @@ QMAKE_CXXFLAGS *= -D_FORTIFY_SOURCE=2
 win32:QMAKE_LFLAGS *= -Wl,--dynamicbase -Wl,--nxcompat
 # on Windows: enable GCC large address aware linker flag
 win32:QMAKE_LFLAGS *= -Wl,--large-address-aware -static
+# i686-w64-mingw32
+win32:QMAKE_LFLAGS *= -static-libgcc -static-libstdc++
 
 # use: qmake "USE_QRCODE=1"
 # libqrencode (http://fukuchi.org/works/qrencode/index.en.html) must be installed for support
 contains(USE_QRCODE, 1) {
     message(Building with QRCode support)
     DEFINES += USE_QRCODE
-    LIBS += -lqrencode
+    INCLUDEPATH += $$QRCODE_INCLUDE_PATH
+    LIBS += $$join(QRCODE_LIB_PATH,,-L) -lqrencode
 }
 
 # use: qmake "USE_UPNP=1" ( enabled by default; default)
@@ -89,6 +98,7 @@ contains(USE_DBUS, 1) {
 contains(USE_IPV6, -) {
     message(Building without IPv6 support)
 } else {
+    message(Building with IPv6 support)
     count(USE_IPV6, 0) {
         USE_IPV6=1
     }
@@ -158,6 +168,7 @@ HEADERS += src/qt/bitcoingui.h \
     src/serialize.h \
     src/core.h \
     src/main.h \
+    src/miner.h \
     src/net.h \
     src/key.h \
     src/db.h \
@@ -204,6 +215,7 @@ HEADERS += src/qt/bitcoingui.h \
     src/qt/askpassphrasedialog.h \
     src/protocol.h \
     src/qt/notificator.h \
+    src/qt/paymentrequestplus.h \
     src/qt/paymentserver.h \
     src/allocators.h \
     src/ui_interface.h \
@@ -256,6 +268,7 @@ SOURCES += src/qt/bitcoin.cpp \
     src/core.cpp \
     src/main.cpp \
     src/init.cpp \
+    src/miner.cpp \
     src/net.cpp \
     src/bloom.cpp \
     src/checkpoints.cpp \
@@ -296,6 +309,7 @@ SOURCES += src/qt/bitcoin.cpp \
     src/qt/askpassphrasedialog.cpp \
     src/protocol.cpp \
     src/qt/notificator.cpp \
+    src/qt/paymentrequestplus.cpp \
     src/qt/paymentserver.cpp \
     src/qt/rpcconsole.cpp \
     src/noui.cpp \
@@ -330,6 +344,9 @@ FORMS += src/qt/forms/sendcoinsdialog.ui \
     src/qt/forms/rpcconsole.ui \
     src/qt/forms/optionsdialog.ui \
     src/qt/forms/intro.ui
+
+PROTOS = src/qt/paymentrequest.proto
+include(share/qt/protobuf.pri)
 
 contains(USE_QRCODE, 1) {
 HEADERS += src/qt/qrcodedialog.h
@@ -441,9 +458,9 @@ macx:QMAKE_CXXFLAGS_THREAD += -pthread
 macx:QMAKE_INFO_PLIST = share/qt/Info.plist
 
 # Set libraries and includes at end, to use platform-defined defaults if not overridden
-INCLUDEPATH += $$BOOST_INCLUDE_PATH $$BDB_INCLUDE_PATH $$OPENSSL_INCLUDE_PATH $$QRENCODE_INCLUDE_PATH
-LIBS += $$join(BOOST_LIB_PATH,,-L,) $$join(BDB_LIB_PATH,,-L,) $$join(OPENSSL_LIB_PATH,,-L,) $$join(QRENCODE_LIB_PATH,,-L,)
-LIBS += -lssl -lcrypto -ldb_cxx$$BDB_LIB_SUFFIX
+INCLUDEPATH += $$BOOST_INCLUDE_PATH $$BDB_INCLUDE_PATH $$OPENSSL_INCLUDE_PATH $$PROTOBUF_INCLUDE_PATH $$QRENCODE_INCLUDE_PATH
+LIBS += $$join(BOOST_LIB_PATH,,-L,) $$join(BDB_LIB_PATH,,-L,) $$join(OPENSSL_LIB_PATH,,-L,) $$join(PROTOBUF_LIB_PATH,,-L,) $$join(QRENCODE_LIB_PATH,,-L,)
+LIBS += -lssl -lcrypto -ldb_cxx$$BDB_LIB_SUFFIX -lprotobuf
 # -lgdi32 has to happen after -lcrypto (see  #681)
 win32:LIBS += -lws2_32 -lshlwapi -lmswsock -lole32 -loleaut32 -luuid -lgdi32
 LIBS += -lboost_system$$BOOST_LIB_SUFFIX -lboost_filesystem$$BOOST_LIB_SUFFIX -lboost_program_options$$BOOST_LIB_SUFFIX -lboost_thread$$BOOST_THREAD_LIB_SUFFIX

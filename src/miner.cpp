@@ -8,10 +8,7 @@
 #include "miner.h"
 #include "main.h"
 
-
-
-
-
+int miningAlgo = ALGO_SHA256D;
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -141,13 +138,44 @@ public:
     }
 };
 
-CBlockTemplate* CreateNewBlock(CReserveKey& reservekey)
+CBlockTemplate* CreateNewBlock(CReserveKey& reservekey, int algo)
 {
     // Create new block
     auto_ptr<CBlockTemplate> pblocktemplate(new CBlockTemplate());
     if(!pblocktemplate.get())
         return NULL;
     CBlock *pblock = &pblocktemplate->block; // pointer for convenience
+
+    // Set block version
+    pblock->nVersion = BLOCK_VERSION_DEFAULT;
+    if(pindexBest->nHeight > NFORKONE)
+    {
+        switch (algo)
+        {
+            case ALGO_SHA256D:
+                break;
+            default:
+                error("CreateNewBlock: bad algorithm");
+                return NULL;
+        }
+    }
+    else
+    {
+        switch (algo)
+        {
+            case ALGO_SHA256D:
+                break;
+            case ALGO_X11:
+                pblock->nVersion |= BLOCK_VERSION_X11;
+                break;
+            case ALGO_BLAKE:
+                pblock->nVersion |= BLOCK_VERSION_BLAKE;
+                break;
+            default:
+                error("CreateNewBlock: bad algorithm");
+                return NULL;
+        }
+    }
 
     // Create coinbase tx
     CTransaction txNew;
@@ -366,7 +394,7 @@ CBlockTemplate* CreateNewBlock(CReserveKey& reservekey)
         // Fill in header
         pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
         UpdateTime(*pblock, pindexPrev);
-        pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock);
+        pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, algo);
         pblock->nNonce         = 0;
         pblock->vtx[0].vin[0].scriptSig = CScript() << OP_0 << OP_0;
         pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(pblock->vtx[0]);
@@ -450,15 +478,26 @@ void FormatHashBuffers(CBlock* pblock, char* pmidstate, char* pdata, char* phash
 
 bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
 {
-    uint256 hash = pblock->GetHash();
+    //printf("CheckWork:\n");
+    int algo = pblock->GetAlgo();
+    //printf("Algo=%d\n", algo);
+    uint256 hashPoW = pblock->GetPoWHash(algo);
     uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
-
-    if (hash > hashTarget)
+    //printf("pow-hash: %s\n  target: %s\n", 
+    //    hashPoW.GetHex().c_str(), 
+    //    hashTarget.GetHex().c_str());
+     
+    if (hashPoW > hashTarget)
         return false;
+        
+    uint256 hashBlock = pblock->GetHash();
 
     //// debug print
-    printf("BitcoinMiner:\n");
-    printf("proof-of-work found  \n  hash: %s  \ntarget: %s\n", hash.GetHex().c_str(), hashTarget.GetHex().c_str());
+    printf("NeosCoinMiner:\n");
+    printf("proof-of-work found\n  block-hash: %s\n  pow-hash: %s\n  target: %s\n", 
+        hashBlock.GetHex().c_str(), 
+        hashPoW.GetHex().c_str(), 
+        hashTarget.GetHex().c_str());
     pblock->print();
     printf("generated %s\n", FormatMoney(pblock->vtx[0].vout[0].nValue).c_str());
 
@@ -466,7 +505,7 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
     {
         LOCK(cs_main);
         if (pblock->hashPrevBlock != hashBestChain)
-            return error("BitcoinMiner : generated block is stale");
+            return error("NeosCoinMiner : generated block is stale");
 
         // Remove key from key pool
         reservekey.KeepKey();
@@ -480,29 +519,35 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
         // Process this block the same as if we had received it from another node
         CValidationState state;
         if (!ProcessBlock(state, NULL, pblock))
-            return error("BitcoinMiner : ProcessBlock, block not accepted");
+            return error("NeosCoinMiner : ProcessBlock, block not accepted");
     }
 
     return true;
 }
 
+void static MinerWaitOnline()
+{
+    if (Params().NetworkID() != CChainParams::REGTEST) 
+    {
+        // Busy-wait for the network to come online so we don't waste time mining
+        // on an obsolete chain. In regtest mode we expect to fly solo.
+        while (vNodes.empty() || IsInitialBlockDownload())
+        {
+            MilliSleep(1000);
+            boost::this_thread::interruption_point();
+        }
+    }
+}
+
 void static BitcoinMiner(CWallet *pwallet)
 {
-    printf("BitcoinMiner started\n");
-    SetThreadPriority(THREAD_PRIORITY_LOWEST);
-    RenameThread("bitcoin-miner");
-
     // Each thread has its own key and counter
     CReserveKey reservekey(pwallet);
     unsigned int nExtraNonce = 0;
 
-    try { while (true) {
-        if (Params().NetworkID() != CChainParams::REGTEST) {
-            // Busy-wait for the network to come online so we don't waste time mining
-            // on an obsolete chain. In regtest mode we expect to fly solo.
-            while (vNodes.empty())
-                MilliSleep(1000);
-        }
+    while (true)
+    {
+        MinerWaitOnline();
 
         //
         // Create new block
@@ -510,13 +555,13 @@ void static BitcoinMiner(CWallet *pwallet)
         unsigned int nTransactionsUpdatedLast = nTransactionsUpdated;
         CBlockIndex* pindexPrev = pindexBest;
 
-        auto_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(reservekey));
+        auto_ptr<CBlockTemplate> pblocktemplate(CreateNewBlock(reservekey, ALGO_SHA256D));
         if (!pblocktemplate.get())
             return;
         CBlock *pblock = &pblocktemplate->block;
         IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
 
-        printf("Running BitcoinMiner with %"PRIszu" transactions in block (%u bytes)\n", pblock->vtx.size(),
+        printf("Running sha265d miner with %"PRIszu" transactions in block (%u bytes)\n", pblock->vtx.size(),
                ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
 
         //
@@ -540,7 +585,7 @@ void static BitcoinMiner(CWallet *pwallet)
         uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
         uint256 hashbuf[2];
         uint256& hash = *alignup<16>(hashbuf);
-        while (true)
+       while (true)
         {
             unsigned int nHashesDone = 0;
             unsigned int nNonceFound;
@@ -624,10 +669,27 @@ void static BitcoinMiner(CWallet *pwallet)
                 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
             }
         }
-    } }
+    } 
+}
+
+void static ThreadBitcoinMiner(CWallet *pwallet)
+{
+    printf("NeosCoin miner started\n");
+    SetThreadPriority(THREAD_PRIORITY_LOWEST);
+    RenameThread("bitcoin-miner");
+
+    try
+    {
+        switch (miningAlgo)
+        {
+            case ALGO_SHA256D:
+                BitcoinMiner(pwallet);
+                break;
+        }
+    }
     catch (boost::thread_interrupted)
     {
-        printf("BitcoinMiner terminated\n");
+        printf("NeosCoin miner terminated\n");
         throw;
     }
 }
@@ -656,8 +718,5 @@ void GenerateBitcoins(bool fGenerate, CWallet* pwallet)
 
     minerThreads = new boost::thread_group();
     for (int i = 0; i < nThreads; i++)
-        minerThreads->create_thread(boost::bind(&BitcoinMiner, pwallet));
+        minerThreads->create_thread(boost::bind(&ThreadBitcoinMiner, pwallet));
 }
-
-
-

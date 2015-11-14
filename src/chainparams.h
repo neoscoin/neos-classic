@@ -40,6 +40,8 @@ public:
         MAIN,
         TESTNET,
         REGTEST,
+
+        MAX_NETWORK_TYPES
     };
 
     enum Base58Type {

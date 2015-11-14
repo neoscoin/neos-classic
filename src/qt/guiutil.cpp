@@ -147,6 +147,14 @@ bool parseBitcoinURI(QString uri, SendCoinsRecipient *out)
     return parseBitcoinURI(uriInstance, out);
 }
 
+bool isDust(const QString& address, qint64 amount)
+{
+    CTxDestination dest = CBitcoinAddress(address.toStdString()).Get();
+    CScript script; script.SetDestination(dest);
+    CTxOut txOut(amount, script);
+    return txOut.IsDust(CTransaction::nMinRelayTxFee);
+}
+
 QString HtmlEscape(const QString& str, bool fMultiLine)
 {
 #if QT_VERSION < 0x050000
@@ -280,11 +288,11 @@ bool ToolTipToRichTextFilter::eventFilter(QObject *obj, QEvent *evt)
     {
         QWidget *widget = static_cast<QWidget*>(obj);
         QString tooltip = widget->toolTip();
-        if(tooltip.size() > size_threshold && !tooltip.startsWith("<qt/>") && !Qt::mightBeRichText(tooltip))
+        if(tooltip.size() > size_threshold && !tooltip.startsWith("<qt") && !Qt::mightBeRichText(tooltip))
         {
-            // Prefix <qt/> to make sure Qt detects this as rich text
+            // Envelop with <qt></qt> to make sure Qt detects this as rich text
             // Escape the current message as HTML and replace \n by <br>
-            tooltip = "<qt/>" + HtmlEscape(tooltip, true);
+            tooltip = "<qt>" + HtmlEscape(tooltip, true) + "</qt>";
             widget->setToolTip(tooltip);
             return true;
         }

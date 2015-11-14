@@ -6,6 +6,7 @@
 #include "chainparams.h"
 #include "db.h"
 #include "init.h"
+#include "miner.h"
 #include "bitcoinrpc.h"
 
 using namespace json_spirit;
@@ -47,22 +48,19 @@ Value GetNetworkHashPS(int lookup, int height)
     CBlockIndex *pb0 = pb;
     int64 minTime = pb0->GetBlockTime();
     int64 maxTime = minTime;
-    uint256 workDiff(0);
     for (int i = 0; i < lookup; i++) {
         pb0 = pb0->pprev;
-        if ( NULL == pb0 )
-            break;
         int64 time = pb0->GetBlockTime();
         minTime = std::min(time, minTime);
         maxTime = std::max(time, maxTime);
-        workDiff = workDiff + pb0->GetBlockWork().getuint256();
     }
 
     // In case there's a situation where minTime == maxTime, we don't want a divide by zero exception.
     if (minTime == maxTime)
         return 0;
 
-     int64 timeDiff = maxTime - minTime;
+    uint256 workDiff = pb->nChainWork - pb0->nChainWork;
+    int64 timeDiff = maxTime - minTime;
 
      return (boost::int64_t)(workDiff.getdouble() / timeDiff);
 }

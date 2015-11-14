@@ -68,8 +68,10 @@ private:
     void operator=(const CWalletDB&);
 public:
     bool WriteName(const std::string& strAddress, const std::string& strName);
-
     bool EraseName(const std::string& strAddress);
+
+    bool WritePurpose(const std::string& strAddress, const std::string& purpose);
+    bool ErasePurpose(const std::string& strAddress);
 
     bool WriteTx(uint256 hash, const CWalletTx& wtx)
     {
@@ -92,7 +94,13 @@ public:
                    keyMeta))
             return false;
 
-        return Write(std::make_pair(std::string("key"), vchPubKey), vchPrivKey, false);
+        // hash pubkey/privkey to accelerate wallet load
+        std::vector<unsigned char> vchKey;
+        vchKey.reserve(vchPubKey.size() + vchPrivKey.size());
+        vchKey.insert(vchKey.end(), vchPubKey.begin(), vchPubKey.end());
+        vchKey.insert(vchKey.end(), vchPrivKey.begin(), vchPrivKey.end());
+
+        return Write(std::make_pair(std::string("key"), vchPubKey), std::make_pair(vchPrivKey, Hash(vchKey.begin(), vchKey.end())), false);
     }
 
     bool WriteCryptedKey(const CPubKey& vchPubKey,

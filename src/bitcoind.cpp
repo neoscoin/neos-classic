@@ -9,15 +9,18 @@
 
 void DetectShutdownThread(boost::thread_group* threadGroup)
 {
-    bool shutdown = ShutdownRequested();
+    bool fShutdown = ShutdownRequested();
     // Tell the main threads to shutdown.
-    while (!shutdown)
+    while (!fShutdown)
     {
         MilliSleep(200);
-        shutdown = ShutdownRequested();
+        fShutdown = ShutdownRequested();
     }
     if (threadGroup)
+    {
         threadGroup->interrupt_all();
+        threadGroup->join_all();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -39,10 +42,15 @@ bool AppInit(int argc, char* argv[])
         ParseParameters(argc, argv);
         if (!boost::filesystem::is_directory(GetDataDir(false)))
         {
-            fprintf(stderr, "Error: Specified directory does not exist\n");
-            Shutdown();
+            fprintf(stderr, "Error: Specified data directory \"%s\" does not exist.\n", mapArgs["-datadir"].c_str());
+            return false;
         }
         ReadConfigFile(mapArgs, mapMultiArgs);
+        // Check for -testnet or -regtest parameter (TestNet() calls are only valid after this clause)
+        if (!SelectParamsFromCommandLine()) {
+            fprintf(stderr, "Error: Invalid combination of -regtest and -testnet.\n");
+            return false;
+        }
 
         if (mapArgs.count("-?") || mapArgs.count("--help"))
         {
@@ -61,16 +69,13 @@ bool AppInit(int argc, char* argv[])
         }
 
         // Command-line RPC
+        bool fCommandLine = false;
         for (int i = 1; i < argc; i++)
             if (!IsSwitchChar(argv[i][0]) && !boost::algorithm::istarts_with(argv[i], "neoscoin:"))
                 fCommandLine = true;
 
         if (fCommandLine)
         {
-            if (!SelectParamsFromCommandLine()) {
-                fprintf(stderr, "Error: invalid combination of -regtest and -testnet.\n");
-                return false;
-            }
             int ret = CommandLineRPC(argc, argv);
             exit(ret);
         }
@@ -106,10 +111,16 @@ bool AppInit(int argc, char* argv[])
     } catch (...) {
         PrintExceptionContinue(NULL, "AppInit()");
     }
-    if (!fRet) {
+
+    if (!fRet)
+    {
         if (detectShutdownThread)
             detectShutdownThread->interrupt();
+
         threadGroup.interrupt_all();
+        // threadGroup.join_all(); was left out intentionally here, because we didn't re-test all of
+        // the startup-failure cases to make sure they don't result in a hang due to some
+        // thread-blocking-waiting-for-another-thread-during-startup case
     }
 
     if (detectShutdownThread)

@@ -46,6 +46,7 @@
 #include <QDragEnterEvent>
 #if QT_VERSION < 0x050000
 #include <QUrl>
+#include <QTextDocument>
 #endif
 #include <QMimeData>
 #include <QStyle>
@@ -159,6 +160,8 @@ BitcoinGUI::BitcoinGUI(bool fIsTestnet, QWidget *parent) :
 
     rpcConsole = new RPCConsole(this);
     connect(openRPCConsoleAction, SIGNAL(triggered()), rpcConsole, SLOT(show()));
+    // prevents an open debug window from becoming stuck/unusable on client shutdown
+    connect(quitAction, SIGNAL(triggered()), rpcConsole, SLOT(hide()));
 
     // Install event filter to be able to catch status tip events (QEvent::StatusTip)
     this->installEventFilter(this);
@@ -732,7 +735,8 @@ void BitcoinGUI::dropEvent(QDropEvent *event)
         QList<QUrl> uris = event->mimeData()->urls();
         foreach(const QUrl &uri, uris)
         {
-            if (walletFrame->handleURI(uri.toString()))
+            SendCoinsRecipient r;
+            if (GUIUtil::parseBitcoinURI(uri, &r) && walletFrame->handlePaymentRequest(r))
                 nValidUrisFound++;
         }
 
@@ -759,12 +763,18 @@ bool BitcoinGUI::eventFilter(QObject *object, QEvent *event)
     return QMainWindow::eventFilter(object, event);
 }
 
-void BitcoinGUI::handleURI(QString strURI)
+void BitcoinGUI::handlePaymentRequest(const SendCoinsRecipient& recipient)
 {
-    // URI has to be valid
-    if (!walletFrame->handleURI(strURI))
-        message(tr("URI handling"), tr("URI can not be parsed! This can be caused by an invalid NeosCoin address or malformed URI parameters."),
-                  CClientUIInterface::ICON_WARNING);
+    walletFrame->handlePaymentRequest(recipient);
+}
+
+void BitcoinGUI::showPaymentACK(QString msg)
+{
+#if QT_VERSION < 0x050000
+    message(tr("Payment acknowledged"), Qt::escape(msg), CClientUIInterface::MODAL);
+#else
+    message(tr("Payment acknowledged"), msg.toHtmlEscaped(), CClientUIInterface::MODAL);
+#endif
 }
 
 void BitcoinGUI::setEncryptionStatus(int status)

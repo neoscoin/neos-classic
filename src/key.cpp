@@ -166,9 +166,12 @@ public:
         assert(nSize == nSize2);
     }
 
-    bool SetPrivKey(const CPrivKey &privkey) {
+    bool SetPrivKey(const CPrivKey &privkey, bool fSkipCheck=false) {
         const unsigned char* pbegin = &privkey[0];
         if (d2i_ECPrivateKey(&pkey, &pbegin, privkey.size())) {
+            if(fSkipCheck)
+                return true;
+
             // d2i_ECPrivateKey returns true if parsing succeeds.
             // This doesn't necessarily mean the key is valid.
             if (EC_KEY_check_key(pkey))
@@ -199,17 +202,19 @@ public:
         ECDSA_SIG *sig = ECDSA_do_sign((unsigned char*)&hash, sizeof(hash), pkey);
         if (sig == NULL)
             return false;
-        if (BN_is_odd(sig->s)) {
-            // enforce even S values, by negating the value (modulo the order) if odd
-            BN_CTX *ctx = BN_CTX_new();
-            BN_CTX_start(ctx);
-            const EC_GROUP *group = EC_KEY_get0_group(pkey);
-            BIGNUM *order = BN_CTX_get(ctx);
-            EC_GROUP_get_order(group, order, ctx);
+        BN_CTX *ctx = BN_CTX_new();
+        BN_CTX_start(ctx);
+        const EC_GROUP *group = EC_KEY_get0_group(pkey);
+        BIGNUM *order = BN_CTX_get(ctx);
+        BIGNUM *halforder = BN_CTX_get(ctx);
+        EC_GROUP_get_order(group, order, ctx);
+        BN_rshift1(halforder, order);
+        if (BN_cmp(sig->s, halforder) > 0) {
+            // enforce low S values, by negating the value (modulo the order) if above order/2.
             BN_sub(sig->s, order, sig->s);
-            BN_CTX_end(ctx);
-            BN_CTX_free(ctx);
         }
+        BN_CTX_end(ctx);
+        BN_CTX_free(ctx);
         unsigned int nSize = ECDSA_size(pkey);
         vchSig.resize(nSize); // Make sure it is big enough
         unsigned char *pos = &vchSig[0];
@@ -430,6 +435,24 @@ bool CKey::SignCompact(const uint256 &hash, std::vector<unsigned char>& vchSig) 
         return false;
     assert(rec != -1);
     vchSig[0] = 27 + rec + (fCompressed ? 4 : 0);
+    return true;
+}
+
+bool CKey::Load(CPrivKey &privkey, CPubKey &vchPubKey, bool fSkipCheck=false) {
+    CECKey key;
+    if (!key.SetPrivKey(privkey, fSkipCheck))
+        return false;
+
+    key.GetSecretBytes(vch);
+    fCompressed = vchPubKey.IsCompressed();
+    fValid = true;
+
+    if (fSkipCheck)
+        return true;
+
+    if (GetPubKey() != vchPubKey)
+        return false;
+
     return true;
 }
 
