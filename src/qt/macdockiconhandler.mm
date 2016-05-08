@@ -52,7 +52,11 @@ MacDockIconHandler::MacDockIconHandler() : QObject()
     this->m_dummyWidget = new QWidget();
     this->m_dockMenu = new QMenu(this->m_dummyWidget);
     this->setMainWindow(NULL);
-
+#if QT_VERSION < 0x050000
+    qt_mac_set_dock_menu(this->m_dockMenu);
+#elif QT_VERSION >= 0x050200
+    this->m_dockMenu->setAsDockMenu();
+#endif
     [pool release];
 }
 
